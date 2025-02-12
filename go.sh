@@ -1,6 +1,6 @@
 #!/bin/bash
-export OPENCM3_DIR="/home/chichko/src/stm32/libopencm3"
+export OPENCM3_DIR="../libopencm3"
 
-OPENCM3_DIR="../libopencm3" make
+make $@ V=1
 
 # to include /usr/arm-none-eabi/include/
