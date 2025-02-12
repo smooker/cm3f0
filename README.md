@@ -1,12 +1,15 @@
 # README
 
-It's intended for the ST STM32F0DISCOVERY eval board. Measures voltage on the 
-ADC\_IN1 input, and prints it to the serial port.
+It's intended for the ST STM32F0CHICHKO eval board. 
 
 ## Board connections
 
 | Port  | Function    | Description                       |
 | ----- | ----------- | --------------------------------- |
 | `PA1` | `(ADC_IN1)` | Analog input                      |
-| `PA9` | `(USART1)`  | TTL serial output `(115200,8,N,1)` |
-# cm3f0
+| `PA9` | `(USART1)`  | TTL serial output `(9600,8,N,1)`  |
+
+
+LED on USART1
+
+# cm3 stm32f031k6t6 zapalka ADC 
