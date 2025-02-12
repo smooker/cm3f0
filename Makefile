@@ -19,6 +19,6 @@
 
 BINARY = adc
 
-LDSCRIPT = ./stm32f0-discovery.ld
+LDSCRIPT = ./stm32f031k6t6.ld
 
 include ./Makefile.include
