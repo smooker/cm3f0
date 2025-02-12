@@ -81,7 +81,7 @@ endef
 
 ifeq ($(strip $(DEVICE)),)
 # Old style, assume LDSCRIPT exists
-DEFS		+= -I$(OPENCM3_DIR)/include
+DEFS		+= -I/usr/arm-none-eabi/include -I$(OPENCM3_DIR)/include -I. -D__GNU_VISIBLE=1 -D_GNU_SOURCE=1
 LDFLAGS		+= -L$(OPENCM3_DIR)/lib
 LDLIBS		+= -l$(LIBNAME)
 LDSCRIPT	?= $(BINARY).ld
