@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 15.0.0, 2025-02-13T08:41:33. -->
+<!-- Written by QtCreator 15.0.0, 2025-02-13T10:47:38. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -144,7 +144,7 @@
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
       <value type="qlonglong" key="GenericProjectManager.GenericMakeStep.JobCount">1</value>
-      <value type="QString" key="GenericProjectManager.GenericMakeStep.MakeArguments">hex</value>
+      <value type="QString" key="GenericProjectManager.GenericMakeStep.MakeArguments">hex V=1</value>
       <value type="QString" key="GenericProjectManager.GenericMakeStep.MakeCommand">/mnt/hdd/src/stm32/cm3smooker/go.sh</value>
       <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">GenericProjectManager.GenericMakeStep</value>
@@ -172,8 +172,10 @@
     <value type="int" key="ProjectExplorer.BuildConfiguration.BuildStepListCount">2</value>
     <value type="bool" key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment">false</value>
     <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.CustomParsers"/>
-    <value type="bool" key="ProjectExplorer.BuildConfiguration.ParseStandardOutput">false</value>
-    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges"/>
+    <value type="bool" key="ProjectExplorer.BuildConfiguration.ParseStandardOutput">true</value>
+    <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges">
+     <value type="QString">OPENCM3_DIR=/home/chichko/src/stm32/libopencm3</value>
+    </valuelist>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">STM32</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">GenericProjectManager.GenericBuildConfiguration</value>
    </valuemap>

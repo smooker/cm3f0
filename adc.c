@@ -36,7 +36,7 @@
 // #pragma message(VAR_NAME_VALUE(NOT_DEFINED))
 // #pragma message(VAR_NAME_VALUE(DEFINED_BUT_NO_VALUE))
 // #pragma message(VAR_NAME_VALUE(DEFINED_INT))
-#pragma message(VAR_NAME_VALUE(__ARM_FP))
+// #pragma message(VAR_NAME_VALUE(__ARM_FP))
 
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/adc.h>
@@ -50,8 +50,7 @@
 
 uint8_t channel_array[] = { 1, 1, ADC_CHANNEL_TEMP};
 
-
-#pragma message(VAR_NAME_VALUE(NOT_DEFINED))
+// #pragma message(VAR_NAME_VALUE(__ARM_FP))
 
 //##################
 static ssize_t _iord(void *_cookie, char *_buf, size_t _n);

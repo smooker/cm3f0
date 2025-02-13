@@ -1,2 +1,2 @@
--std=c99 -mthumb -mcpu=cortex-m0 -msoft-float -D__GNU_VISIBLE=1 -D_GNU_SOURCE=1
+-std=c99 -ggdb3 -mthumb -mcpu=cortex-m0 -msoft-float -D__GNU_VISIBLE=1 -D_GNU_SOURCE=1 -DSTM32F0 -Wextra -Wshadow -Wimplicit-function-declaration -Wredundant-decls -Wmissing-prototypes -Wstrict-prototypes-fno-common -ffunction-sections -fdata-sections  -MD -Wall -Wundef
 #-D__SOFT_FP=1 -D__ARM_FP=0x08
