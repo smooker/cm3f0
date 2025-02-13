@@ -5,3 +5,5 @@ go.sh
 rules.mk
 stm32f031k6t6.ld
 cm3smooker.h
+ledsegments.h
+

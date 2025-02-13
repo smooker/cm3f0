@@ -21,23 +21,6 @@
  * along with this library.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-//MYMACROS #############################
-/* Some test definition here */
-#define DEFINED_BUT_NO_VALUE
-#define DEFINED_INT 3
-#define DEFINED_STR "ABC"
-
-/* definition to expand macro then apply to pragma message */
-#define VALUE_TO_STRING(x) #x
-#define VALUE(x) VALUE_TO_STRING(x)
-#define VAR_NAME_VALUE(var) #var "="  VALUE(var)
-
-/* Some example here */
-// #pragma message(VAR_NAME_VALUE(NOT_DEFINED))
-// #pragma message(VAR_NAME_VALUE(DEFINED_BUT_NO_VALUE))
-// #pragma message(VAR_NAME_VALUE(DEFINED_INT))
-// #pragma message(VAR_NAME_VALUE(__ARM_FP))
-
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/usart.h>
@@ -47,6 +30,8 @@
 #include <errno.h>
 #include <stddef.h>
 #include <sys/types.h>
+
+#include <./ledsegments.h
 
 uint8_t channel_array[] = { 1, 1, ADC_CHANNEL_TEMP};
 
