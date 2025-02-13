@@ -109,8 +109,11 @@ static void adc_setup(void)
 	rcc_periph_clock_enable(RCC_ADC);
 	rcc_periph_clock_enable(RCC_GPIOA);
 
+    //setup 0-3 channels of the ADC
 	gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO0);
 	gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO1);
+    gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO2);
+    gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO3);
 
 	adc_power_off(ADC1);
 	adc_set_clk_source(ADC1, ADC_CLKSOURCE_ADC);
@@ -118,7 +121,9 @@ static void adc_setup(void)
 	adc_set_operation_mode(ADC1, ADC_MODE_SCAN);
 	adc_disable_external_trigger_regular(ADC1);
 	adc_set_right_aligned(ADC1);
+
 	adc_enable_temperature_sensor();
+
 	adc_set_sample_time_on_all_channels(ADC1, ADC_SMPTIME_071DOT5);
 	adc_set_regular_sequence(ADC1, 1, channel_array);
 	adc_set_resolution(ADC1, ADC_RESOLUTION_12BIT);
