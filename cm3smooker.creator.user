@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 15.0.0, 2025-02-13T10:53:53. -->
+<!-- Written by QtCreator 15.0.0, 2025-02-13T13:39:45. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -140,7 +140,7 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">GenericProjectManager.GenericBuildConfiguration</value>
    </valuemap>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.1">
-    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/mnt/hdd/src/stm32/cm3smooker</value>
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/mnt/hdd/src/stm32/cm3f0_gittest</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
       <value type="qlonglong" key="GenericProjectManager.GenericMakeStep.JobCount">1</value>
@@ -174,7 +174,7 @@
     <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.CustomParsers"/>
     <value type="bool" key="ProjectExplorer.BuildConfiguration.ParseStandardOutput">true</value>
     <valuelist type="QVariantList" key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges">
-     <value type="QString">OPENCM3_DIR=/home/chichko/src/stm32/libopencm3</value>
+     <value type="QString">#OPENCM3_DIR=/home/chichko/src/stm32/libopencm3</value>
     </valuelist>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">STM32</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">GenericProjectManager.GenericBuildConfiguration</value>

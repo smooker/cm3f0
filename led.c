@@ -1,8 +1,24 @@
+#include <libopencm3/stm32/rcc.h>
+#include <libopencm3/stm32/adc.h>
+#include <libopencm3/stm32/usart.h>
+#include <libopencm3/stm32/gpio.h>
+
+#include <stdio.h>
+#include <errno.h>
+#include <stddef.h>
+#include <sys/types.h>
+
+#include <ledsegments.h>
+
+extern aTxBuffer[];
+
+void allsegmentsoff();
+
 //
 void allsegmentsoff()
 {
     for(int i=0;i<8;i++) {
-        aTxBuffer[i] = _null;
+        aTxBuffer[i] = __null;
     }
 }
 
@@ -10,56 +26,56 @@ void allsegmentsoff()
 uint8_t d2s(uint8_t input)
 {
     if (input == 0) {
-        return _0;
+        return __0;
     }
     else if (input == 1) {
-        return _1;
+        return __1;
     }
     else if (input == 2) {
-        return _2;
+        return __2;
     }
     else if (input == 3) {
-        return _3;
+        return __3;
     }
     else if (input == 4) {
-        return _4;
+        return __4;
     }
     else if (input == 5) {
-        return _5;
+        return __5;
     }
     else if (input == 6) {
-        return _6;
+        return __6;
     }
     else if (input == 7) {
-        return _7;
+        return __7;
     }
     else if (input == 8) {
-        return _8;
+        return __8;
     }
     else if (input == 9) {
-        return _9;
+        return __9;
     }
     else if (input == 10) {
-        return _A;
+        return __A;
     }
     else if (input == 11) {
-        return _b;
+        return __b;
     }
     else if (input == 12) {
-        return _C;
+        return __C;
     }
     else if (input == 13) {
-        return _d;
+        return __d;
     }
     else if (input == 14) {
-        return _E;
+        return __E;
     }
     else if (input == 15) {
-        return _F;
+        return __F;
     }
 
     else {
-        return _o;
+        return __o;
     }
 }
 
@@ -84,9 +100,9 @@ void hex2led(uint32_t input)
 uint8_t getDot(uint8_t ind)
 {
     if ( (aTxBuffer[ind] & 0x80) == 0x80) {         //8 bit
-        return SET;         //true
+        return 1;         //true
     } else {
-        return RESET;       //false = 0
+        return 0;       //false = 0
     }
 }
 
@@ -111,7 +127,7 @@ void dec2led(int input)
     if (input < 0) {
         input *= -1;
         start = 100000;
-        aTxBuffer[pos--] = _minus;
+        aTxBuffer[pos--] = __minus;
     }
     while( start > 0 )
     {

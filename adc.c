@@ -25,17 +25,37 @@
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/stm32/f0/nvic.h>
 
 #include <stdio.h>
 #include <errno.h>
 #include <stddef.h>
 #include <sys/types.h>
 
-#include <./ledsegments.h
+#include <./ledsegments.h>
+
+//
+#define BKPT asm("bkpt 255")
+//
+#define TXBUFFERSIZE 32
+#define RXBUFFERSIZE TXBUFFERSIZE
+//
 
 uint8_t channel_array[] = { 1, 1, ADC_CHANNEL_TEMP};
 
-// #pragma message(VAR_NAME_VALUE(__ARM_FP))
+//UART bufers and positions
+uint8_t aTxBufferPos = 0;
+uint8_t aTxBuffer[TXBUFFERSIZE];
+
+uint8_t aRxBufferPos = 0;
+uint8_t aRxBuffer[RXBUFFERSIZE];
+
+// ////
+void usart_isr(void)
+{
+    /* Check for IDLE line interrupt */
+    BKPT;
+}
 
 //##################
 static ssize_t _iord(void *_cookie, char *_buf, size_t _n);
