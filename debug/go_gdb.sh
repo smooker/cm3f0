@@ -1,3 +1,3 @@
 #!/bin/bash
-arm-none-eabi-gdb -x ./script4.gdb build/neshto.elf 
+arm-none-eabi-gdb -x ./.gdbinit -x ./script4.gdb build/neshto.elf 
 
