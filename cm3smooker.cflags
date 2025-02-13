@@ -1,1 +1,2 @@
--std=c17
+-std=c99 -mthumb -mcpu=cortex-m0 -msoft-float -D__GNU_VISIBLE=1 -D_GNU_SOURCE=1
+#-D__SOFT_FP=1 -D__ARM_FP=0x08
