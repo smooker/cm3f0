@@ -32,8 +32,6 @@
 #include <stddef.h>
 #include <sys/types.h>
 
-#include <./ledsegments.h>
-
 //
 #define BKPT asm("bkpt 255")
 //
@@ -51,7 +49,7 @@ uint8_t aRxBufferPos = 0;
 uint8_t aRxBuffer[RXBUFFERSIZE];
 
 // ////
-void usart_isr(void)
+void usart1_isr(void)
 {
     /* Check for IDLE line interrupt */
     BKPT;

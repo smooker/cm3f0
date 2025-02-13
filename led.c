@@ -1,7 +1,7 @@
-#include <libopencm3/stm32/rcc.h>
-#include <libopencm3/stm32/adc.h>
-#include <libopencm3/stm32/usart.h>
-#include <libopencm3/stm32/gpio.h>
+// #include <libopencm3/stm32/rcc.h>
+// #include <libopencm3/stm32/adc.h>
+// #include <libopencm3/stm32/usart.h>
+// #include <libopencm3/stm32/gpio.h>
 
 #include <stdio.h>
 #include <errno.h>
@@ -10,9 +10,7 @@
 
 #include <ledsegments.h>
 
-extern aTxBuffer[];
-
-void allsegmentsoff();
+extern uint8_t aTxBuffer[];
 
 //
 void allsegmentsoff()
