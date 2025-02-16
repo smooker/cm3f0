@@ -24,13 +24,18 @@
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/usart.h>
+#include <libopencm3/stm32/dma.h>
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/f0/nvic.h>
+#include <libopencm3/stm32/f0/flash.h>
+#include <libopencm3/stm32/spi.h>
 
 #include <stdio.h>
 #include <errno.h>
 #include <stddef.h>
 #include <sys/types.h>
+
+#include "led.h"
 
 //
 #define BKPT asm("bkpt 255")
@@ -38,6 +43,25 @@
 #define TXBUFFERSIZE 32
 #define RXBUFFERSIZE TXBUFFERSIZE
 //
+
+
+/* Some test definition here */
+#define DEFINED_BUT_NO_VALUE
+#define DEFINED_INT 3
+#define DEFINED_STR "ABC"
+
+/* definition to expand macro then apply to pragma message */
+#define VALUE_TO_STRING(x) #x
+#define VALUE(x) VALUE_TO_STRING(x)
+#define VAR_NAME_VALUE(var) #var "="  VALUE(var)
+
+/* Some example here */
+#pragma message(VAR_NAME_VALUE(NOT_DEFINED))
+#pragma message(VAR_NAME_VALUE(DEFINED_BUT_NO_VALUE))
+#pragma message(VAR_NAME_VALUE(DEFINED_INT))
+#pragma message(VAR_NAME_VALUE(DEFINED_STR))
+
+
 
 uint8_t channel_array[] = { 1, 1, ADC_CHANNEL_TEMP};
 
@@ -48,11 +72,33 @@ uint8_t aTxBuffer[TXBUFFERSIZE];
 uint8_t aRxBufferPos = 0;
 uint8_t aRxBuffer[RXBUFFERSIZE];
 
+uint16_t data = 0x55;
+
 // ////
 void usart1_isr(void)
 {
-    /* Check for IDLE line interrupt */
-    BKPT;
+    // USART interrupt and status register (USART_ISR)
+    //IDLE OK!!!
+
+    /* Check if we were called because of RXNE. */
+    if (((USART_CR1(USART1) & USART_CR1_RXNEIE) != 0) && ((USART_ISR(USART1) & USART_ISR_RXNE) != 0) && (((USART_ISR(USART1) & 0x07) == 0)) ) {
+        data = usart_recv(USART1);
+        /* Enable transmit interrupt so it sends back the data. */
+        USART_CR1(USART1) |= USART_CR1_TXEIE;
+        gpio_toggle(GPIOB, GPIO0);
+        gpio_toggle(GPIOB, GPIO1);
+        // hex2led(0x55aa55aa);
+        // BKPT;
+    }
+
+    if (data != 0x00) {
+        gpio_toggle(GPIOB, GPIO1);
+    }
+
+    if (((USART_CR1(USART1) & USART_CR1_TXEIE) != 0) && ((USART_ISR(USART1) & USART_ISR_TXE) != 0)) {
+         /* Disable the TXE interrupt as we don't need it anymore. */
+         USART_CR1(USART1) &= ~USART_CR1_TXEIE;
+    }
 }
 
 //##################
@@ -90,8 +136,24 @@ static FILE *usart_setup(uint32_t dev)
     usart_set_mode(dev, USART_MODE_TX_RX);
     usart_set_flow_control(dev, USART_FLOWCONTROL_NONE);
 
+    /* Enable USART1 Receive interrupt. */
+    usart_enable_rx_interrupt(dev);        //not needed in DMA mode ??   below...
+
+    // /* Enable USART1 Transmit interrupt. */
+    // usart_enable_tx_interrupt(dev);        // rx enables tx interrupt
+
+    /* Enable USART1 Receive interrupt. */
+    // USART_CR1(USART1) |= USART_CR1_RXNEIE;      //same as above for enable rxie
+
     /* Finally enable the USART. */
     usart_enable(dev);
+
+    nvic_set_priority(NVIC_USART1_IRQ, 0);      //checkme priority in the docs
+    nvic_enable_irq(NVIC_USART1_IRQ);
+
+    // //TX DMA only... int multiplexor
+    // nvic_set_priority(NVIC_DMA1_CHANNEL1_IRQ, 0);
+    // nvic_enable_irq(NVIC_DMA1_CHANNEL1_IRQ);
 
     cookie_io_functions_t stub = { _iord, _iowr, NULL, NULL };
     FILE *fp = fopencookie((void *)dev, "rw+", stub);
@@ -112,17 +174,72 @@ static void gpio_setup(void)
 
     /* Setup USART TX pin as alternate function. */
     gpio_set_af(GPIOA, GPIO_AF1, GPIO9);
+
+    /* Setup GPIO pins for USART receive. */
+    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO10);
+
+    /* Setup USART RX pin as alternate function. */
+    gpio_set_af(GPIOA, GPIO_AF1, GPIO10);
+
+
+    //setup LEDS
+    gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0);
+    gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO1);
+
+    //MCO
+    gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO8);
+    gpio_set_output_options(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO8);
+    gpio_set_af(GPIOA, 0, GPIO8);
+
+    gpio_set(GPIOB, GPIO0);
+    gpio_set(GPIOB, GPIO1);
 }
 
 //##################
 static void clock_setup(void)
 {
-    /* Enable GPIOC clock for LED & USARTs. */
-    rcc_periph_clock_enable(RCC_GPIOC);
-    rcc_periph_clock_enable(RCC_GPIOA);
+    rcc_osc_on(RCC_HSE);
+    rcc_wait_for_osc_ready(RCC_HSE);
+    rcc_set_sysclk_source(RCC_HSE);
+
+    rcc_set_hpre(RCC_CFGR_HPRE_NODIV);  // AHB Prescaler
+    rcc_set_ppre(RCC_CFGR_PPRE_NODIV);  // APB1 Prescaler
+
+    flash_prefetch_enable();
+    flash_set_ws(FLASH_ACR_LATENCY_024_048MHZ);
+
+    // PLL: 16MHz * 3 = 48MHz
+    rcc_set_prediv(RCC_CFGR2_PREDIV_NODIV);
+    rcc_set_pll_multiplication_factor(RCC_CFGR_PLLMUL_MUL3);
+    rcc_set_pll_source(RCC_CFGR_PLLSRC_HSE_CLK);
+    rcc_set_pllxtpre(RCC_CFGR_PLLXTPRE_HSE_CLK);
+
+    rcc_osc_on(RCC_PLL);
+    rcc_wait_for_osc_ready(RCC_PLL);
+    rcc_set_sysclk_source(RCC_PLL);
+
+    // rcc_set_usbclk_source(RCC_PLL);
+
+    rcc_apb1_frequency = 48000000;
+    rcc_ahb_frequency = 48000000;
+
+    /* Enable GPIOC clock for LED, ADC & USARTs. */
+    rcc_periph_clock_enable(RCC_GPIOA);         //adc PA0-PA3
+    rcc_periph_clock_enable(RCC_GPIOB);         //leds on PB0 PB1. PB3 MCO
 
     /* Enable clocks for USART. */
     rcc_periph_clock_enable(RCC_USART1);
+
+    /* Enable DMA1 clock */
+    // rcc_periph_clock_enable(RCC_DMA1);          //dma for USART TX only for now
+
+    //MCO stuff for debugging serial speed
+    // MCKOE
+
+    //rcc_set_mco(RCC_CFGR_MCO_HSE | RCC_CFGR_MCOPRE_DIV1 | RCC_CFGR_MCO_PLL);      //source for mco and prescaler. helper function with 24 bits shift
+    rcc_set_mco( (RCC_CFGR_MCO_PLL | RCC_CFGR_PLLNODIV) );      //source for mco and prescaler. helper function with 24 bits shift
+
+#pragma message(VALUE(RCC_MCO_NODIV))
 }
 //##################
 
@@ -210,6 +327,13 @@ static void adc_setup(void)
 // 	usart_send_blocking(usart, '\n');
 // }
 
+
+void transmitBuffer()
+{
+    //stat = HAL_UART_Transmit_DMA(&huart1, (uint8_t*)&aTxBuffer, 8);
+
+}
+
 int main(void)
 {
     uint16_t temp;
@@ -221,6 +345,10 @@ int main(void)
     fp = usart_setup(USART1);
 
 	adc_setup();
+
+    allsegmentsoff();
+
+    // BKPT;
 
 	while (1) {
 		adc_start_conversion_regular(ADC1);

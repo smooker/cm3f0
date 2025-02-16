@@ -1,14 +1,4 @@
-// #include <libopencm3/stm32/rcc.h>
-// #include <libopencm3/stm32/adc.h>
-// #include <libopencm3/stm32/usart.h>
-// #include <libopencm3/stm32/gpio.h>
-
-#include <stdio.h>
-#include <errno.h>
-#include <stddef.h>
-#include <sys/types.h>
-
-#include <ledsegments.h>
+#include "led.h"
 
 extern uint8_t aTxBuffer[];
 
