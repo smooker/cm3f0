@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <sys/types.h>
 
-#include <ledsegments.h>
+#include "ledsegments.h"
 
 
 void allsegmentsoff();

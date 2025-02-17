@@ -1,3 +1,4 @@
-../libopencm3/include/
+/home/smooker/src/stm32/libopencm3/include/
 ./cm3smooker.h
-../libopencm3-examples/libopencm3/include/libopencm3/stm32/f0/rcc.h
+/usr/arm-none-eabi/include/
+/home/smooker/src/stm32/libopencm3/include/libopencm3/stm32/f0/rcc.h

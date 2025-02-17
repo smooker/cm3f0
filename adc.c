@@ -28,7 +28,7 @@
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/stm32/f0/nvic.h>
 #include <libopencm3/stm32/f0/flash.h>
-#include <libopencm3/stm32/spi.h>
+// #include <libopencm3/stm32/spi.h>
 
 #include <stdio.h>
 #include <errno.h>
