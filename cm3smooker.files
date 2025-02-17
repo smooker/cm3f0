@@ -8,5 +8,6 @@ stm32f031k6t6.ld
 cm3smooker.h
 ledsegments.h
 led.c
+/home/chichko/src/stm32/libopencm3/include/libopencm3/stm32/f0/rcc.h
 
 
