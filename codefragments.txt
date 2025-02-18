@@ -1,0 +1,36 @@
+// static void my_usart_print_int(uint32_t usart, int16_t value)
+// {
+// 	int8_t i;
+// 	int8_t nr_digits = 0;
+
+// 	while (value > 0) {
+// 		buffer[nr_digits++] = "0123456789"[value % 10];
+// 		value /= 10;
+// 	}
+
+// 	for (i = nr_digits-1; i >= 0; i--) {
+// 		usart_send_blocking(usart, buffer[i]);
+// 	}
+
+// }
+
+
+
+/* Some test definition here */
+#define DEFINED_BUT_NO_VALUE
+#define DEFINED_INT 3
+#define DEFINED_STR "ABC"
+
+/* definition to expand macro then apply to pragma message */
+#define VALUE_TO_STRING(x) #x
+#define VALUE(x) VALUE_TO_STRING(x)
+#define VAR_NAME_VALUE(var) #var "="  VALUE(var)
+
+/* Some example here */
+#pragma message(VAR_NAME_VALUE(NOT_DEFINED))
+#pragma message(VAR_NAME_VALUE(DEFINED_BUT_NO_VALUE))
+#pragma message(VAR_NAME_VALUE(DEFINED_INT))
+#pragma message(VAR_NAME_VALUE(DEFINED_STR))
+
+
+

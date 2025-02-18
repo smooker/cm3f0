@@ -3,7 +3,10 @@
 
 extern uint8_t aTxBuffer[];
 
-//
+/**
+  * @brief
+  * @retval
+  */
 void allsegmentsoff()
 {
     for(int i=0;i<8;i++) {
@@ -11,7 +14,10 @@ void allsegmentsoff()
     }
 }
 
-//decimal to symbol table
+/**
+  * @brief decimal to symbol function xref table
+  * @retval
+  */
 uint8_t d2s(uint8_t input)
 {
     if (input == 0) {
@@ -68,7 +74,10 @@ uint8_t d2s(uint8_t input)
     }
 }
 
-//uint32_t to LED
+/**
+  * @brief uint32_t to LED
+  * @retval
+  */
 void hex2led(uint32_t input)
 {
     uint32_t start = 0x10000000;
@@ -85,7 +94,10 @@ void hex2led(uint32_t input)
     }
 }
 
-//dot turned on on index ?
+/**
+  * @brief dot turned on on index
+  * @retval
+  */
 uint8_t getDot(uint8_t ind)
 {
     if ( (aTxBuffer[ind] & 0x80) == 0x80) {         //8 bit
@@ -95,7 +107,10 @@ uint8_t getDot(uint8_t ind)
     }
 }
 
-//turn on dot on
+/**
+  * @brief turn on dot on
+  * @retval
+  */
 void dot(uint8_t ind, uint8_t light)
 {
     if (light > 0) {
@@ -105,7 +120,10 @@ void dot(uint8_t ind, uint8_t light)
     }
 }
 
-//decimal to LED
+/**
+  * @briefdecimal to LED
+  * @retval
+  */
 void dec2led(int input)
 {
     uint32_t start = 1000000;
