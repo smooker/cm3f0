@@ -74,6 +74,7 @@ uint8_t aRxBufferPos = 0;
 uint8_t aRxBuffer[RXBUFFERSIZE];
 
 uint16_t data = 0x55;
+uint8_t cnt = 1;
 
 // ////
 void usart1_isr(void)
@@ -88,12 +89,15 @@ void usart1_isr(void)
         USART_CR1(USART1) |= USART_CR1_TXEIE;
         gpio_toggle(GPIOB, GPIO0);
         gpio_toggle(GPIOB, GPIO1);
-        // hex2led(0x55aa55aa);
+        hex2led(0x55aa55aa);
+        dot(cnt++%8, 1);
+        transmitBuffer();
         // BKPT;
     }
 
     if (data != 0x00) {
         gpio_toggle(GPIOB, GPIO1);
+        BKPT;
     }
 
     if (((USART_CR1(USART1) & USART_CR1_TXEIE) != 0) && ((USART_ISR(USART1) & USART_ISR_TXE) != 0)) {
@@ -237,8 +241,9 @@ static void clock_setup(void)
     //MCO stuff for debugging serial speed
     // MCKOE
 
-    //rcc_set_mco(RCC_CFGR_MCO_HSE | RCC_CFGR_MCOPRE_DIV1 | RCC_CFGR_MCO_PLL);      //source for mco and prescaler. helper function with 24 bits shift
-    rcc_set_mco( (RCC_CFGR_MCO_PLL | RCC_CFGR_PLLNODIV) );      //source for mco and prescaler. helper function with 24 bits shift
+    // rcc_set_mco( RCC_CFGR_MCO_HSE  );      //source for mco and prescaler. helper function with 24 bits shift
+    // rcc_set_mco( RCC_CFGR_MCO_PLL );      //source for mco and prescaler. helper function with 24 bits shift. can not set div/1/2
+    rcc_set_mco( RCC_CFGR_MCO_SYSCLK );
 
 #pragma message(VALUE(RCC_MCO_NODIV))
 }
@@ -328,17 +333,17 @@ static void adc_setup(void)
 // 	usart_send_blocking(usart, '\n');
 // }
 
-
 void transmitBuffer()
 {
-    //stat = HAL_UART_Transmit_DMA(&huart1, (uint8_t*)&aTxBuffer, 8);
-
+    for (uint8_t i=0; i<8; i++) {
+        usart_send_blocking(USART1, aTxBuffer[i]);
+    }
 }
 
 int main(void)
 {
     uint16_t temp;
-    // int i, c = 0;
+
     FILE *fp;
 
     clock_setup();

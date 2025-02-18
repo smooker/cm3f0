@@ -1,4 +1,5 @@
 #include "led.h"
+#include <libopencm3/stm32/usart.h>
 
 extern uint8_t aTxBuffer[];
 
