@@ -17,6 +17,6 @@ uint8_t getDot(uint8_t ind);
 void dot(uint8_t ind, uint8_t light);
 void dec2led(int input);
 void float2led(float input);
-
+void brightness (uint8_t input);
 
 #endif // LED_H

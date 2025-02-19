@@ -15,6 +15,16 @@ void allsegmentsoff()
     }
 }
 
+
+/**
+  * @brief
+  * @retval
+  */
+void brightness (uint8_t input)
+{
+    aTxBuffer[8]=input;
+}
+
 /**
   * @brief decimal to symbol function xref table
   * @retval
@@ -134,36 +144,62 @@ void float2led(float input)
     int result = resultS;
     int8_t sign = 1;
 
-
-    if ( result < 0 ) {
+    //check for sign
+    if ( input < 0 ) {
         result *= -1;
         sign = -1;
         input *= -1.0f;
         resultS = result;
     }
 
-    //check for sign
-
-    if ( result == 0 ) {
-        result = (int) (input * 100000);
-    }
-    else if ( (result >= 1) & (result <= 9) ) {
-        result = (int) (input * 100000);
-    }
-    else if ( (result >= 10) & (result <= 99) ) {
-        result = (int) (input * 10000);
-    }
-    else if ( (result >= 100) & (result <= 999) ) {
-        result = (int) (input * 1000);
-    }
-    else if ( (result >= 1000) & (result <= 9999) ) {
-        result = (int) (input * 100);
-    }
-    else if ( (result >= 10000) & (result <= 99999) ) {
-        result = (int) (input * 10);
-    }
-    else if ( (result >= 100000) & (result <= 999999) ) {
-        result = (int) (input * 1);
+    if (sign == 1) {
+        //
+        if ( result == 0 ) {
+            result = (int) (input * 1000000);
+        }
+        else if ( (result >= 1) & (result <= 9) ) {
+            result = (int) (input * 1000000);
+        }
+        else if ( (result >= 10) & (result <= 99) ) {
+            result = (int) (input * 100000);
+        }
+        else if ( (result >= 100) & (result <= 999) ) {
+            result = (int) (input * 10000);
+        }
+        else if ( (result >= 1000) & (result <= 9999) ) {
+            result = (int) (input * 1000);
+        }
+        else if ( (result >= 10000) & (result <= 99999) ) {
+            result = (int) (input * 100);
+        }
+        else if ( (result >= 100000) & (result <= 999999) ) {
+            result = (int) (input * 10);
+        }
+        else if ( (result >= 1000000) & (result <= 9999999) ) {
+            result = (int) (input * 1);
+        }
+    } else {
+        if ( result == 0 ) {
+            result = (int) (input * 100000);     // 0.002776 : -.002776 -0.3 * 10000 = 3000
+        }
+        else if ( (result >= 1) & (result <= 9) ) {
+            result = (int) (input * 100000);
+        }
+        else if ( (result >= 10) & (result <= 99) ) {
+            result = (int) (input * 10000);
+        }
+        else if ( (result >= 100) & (result <= 999) ) {
+            result = (int) (input * 1000);
+        }
+        else if ( (result >= 1000) & (result <= 9999) ) {
+            result = (int) (input * 100);
+        }
+        else if ( (result >= 10000) & (result <= 99999) ) {
+            result = (int) (input * 10);
+        }
+        else if ( (result >= 100000) & (result <= 999999) ) {
+            result = (int) (input * 1);
+        }
     }
 
     result *= sign;
@@ -173,26 +209,69 @@ void float2led(float input)
     result *= sign;
 
     //putdot
-    if ( resultS == 0 ) {
-        dot(5, 1);
-    }
-    else if ( (resultS >= 1) & (resultS <= 9) ) {
-        dot(5, 1);
-    }
-    else if ( (resultS >= 10) & (resultS <= 99) ) {
-        dot(4, 1);
-    }
-    else if ( (resultS >= 100) & (resultS <= 999) ) {
-        dot(3, 1);
-    }
-    else if ( (resultS >= 1000) & (resultS <= 9999) ) {
-        dot(2, 1);
-    }
-    else if ( (resultS >= 10000) & (resultS <= 99999) ) {
-        dot(1, 1);
-    }
-    else if ( (resultS >= 100000) & (resultS <= 999999) ) {
-        dot(0, 1);
+    if (sign == 1) {
+        //
+        if ( resultS == 0 ) {
+            resultS = (int) (input * 1000000);
+            dot(6, 1);
+        }
+        else if ( (resultS >= 1) & (resultS <= 9) ) {
+            resultS = (int) (input * 1000000);
+            dot(6, 1);
+        }
+        else if ( (resultS >= 10) & (resultS <= 99) ) {
+            resultS = (int) (input * 100000);
+            dot(5, 1);
+        }
+        else if ( (resultS >= 100) & (resultS <= 999) ) {
+            resultS = (int) (input * 10000);
+            dot(4, 1);
+        }
+        else if ( (resultS >= 1000) & (resultS <= 9999) ) {
+            resultS = (int) (input * 1000);
+            dot(3, 1);
+        }
+        else if ( (resultS >= 10000) & (resultS <= 99999) ) {
+            resultS = (int) (input * 100);
+            dot(2, 1);
+        }
+        else if ( (resultS >= 100000) & (resultS <= 999999) ) {
+            resultS = (int) (input * 10);
+            dot(1, 1);
+        }
+        else if ( (resultS >= 1000000) & (resultS <= 9999999) ) {
+            resultS = (int) (input * 1);
+            dot(0, 1);
+        }
+    } else {
+        if ( resultS == 0 ) {
+            resultS = (int) (input * 100000);
+            dot(5, 1);
+        }
+        else if ( (resultS >= 1) & (resultS <= 9) ) {
+            resultS = (int) (input * 100000);
+            dot(5, 1);
+        }
+        else if ( (resultS >= 10) & (resultS <= 99) ) {
+            resultS = (int) (input * 10000);
+            dot(4, 1);
+        }
+        else if ( (resultS >= 100) & (resultS <= 999) ) {
+            resultS = (int) (input * 1000);
+            dot(3, 1);
+        }
+        else if ( (resultS >= 1000) & (resultS <= 9999) ) {
+            resultS = (int) (input * 100);
+            dot(2, 1);
+        }
+        else if ( (resultS >= 10000) & (resultS <= 99999) ) {
+            resultS = (int) (input * 10);
+            dot(1, 1);
+        }
+        else if ( (resultS >= 100000) & (resultS <= 999999) ) {
+            resultS = (int) (input * 1);
+            dot(0, 1);
+        }
     }
 }
 
@@ -221,5 +300,6 @@ void dec2led(int input)
         input -= digit * start;
         start /= 10;
     }
+
     aTxBufferPos = 0;
 }

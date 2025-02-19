@@ -43,8 +43,8 @@ uint8_t aRxBuffer[RXBUFFERSIZE];
 //
 uint8_t cnt = 1;
 //
-float testf = -1.23456f;
-
+float testf = -0.00030f;
+int8_t testfsign = 1;
 
 /**
   * @brief
@@ -79,18 +79,20 @@ void usart1_isr(void)
         USART_CR1(USART1) |= USART_CR1_TXEIE;
         gpio_toggle(GPIOB, GPIO0);
         gpio_toggle(GPIOB, GPIO1);
-        // hex2led(0x55aa55aa);
-        // dec2led(-123456);
+        allsegmentsoff();
         float2led(testf);
-        // dot(cnt++%8, 1);
-        aTxBuffer[7]=cnt++;      //movement
+        // dot(cnt++%8, 1);      //movement of dots
+        // aTxBuffer[7]=cnt++;      //movement of the leds above
         transmitBuffer();
         // BKPT;
     }
 
-    if (aRxBuffer[0] != 0x00) {
-        gpio_toggle(GPIOB, GPIO1);
-        BKPT;
+    if (aRxBuffer[0] == 0x01) {
+        testfsign = 1;
+    }
+
+    if (aRxBuffer[0] == 0x02) {
+        testfsign = -1;
     }
 
     if (((USART_CR1(USART1) & USART_CR1_TXEIE) != 0) && ((USART_ISR(USART1) & USART_ISR_TXE) != 0)) {
@@ -308,7 +310,7 @@ static void adc_setup(void)
   */
 void transmitBuffer(void)
 {
-    for (uint8_t i=0; i<8; i++) {
+    for (uint8_t i=0; i<10; i++) {
         // usart_send_blocking(USART1, aTxBuffer[i]);
         fprintf(fp, "%c", aTxBuffer[i]);
     }
@@ -328,6 +330,7 @@ int main(void)
 	adc_setup();
 
     allsegmentsoff();
+    brightness(0xf4);
 
     // BKPT;
 
@@ -342,6 +345,7 @@ int main(void)
 		for (i = 0; i < 800000; i++) {   /* Wait a bit. */
 			__asm__("nop");
 		}
+        testf += 0.000001f*testfsign;
 	}
 
 	return 0;
