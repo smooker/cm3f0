@@ -14,29 +14,37 @@
 #include <libopencm3/stm32/f0/gpio.h>
 
 #include <stdio.h>
-#include <errno.h>
-#include <stddef.h>
+// #include <errno.h>
+// #include <stddef.h>
 #include <sys/types.h>
 
 #include "led.h"
 
 //
 #define BKPT asm("bkpt 255")
+
 //
 #define TXBUFFERSIZE 16                                 //uint16_t for the uart in the future!
 #define RXBUFFERSIZE TXBUFFERSIZE
 
-//
-uint8_t channel_array[] = { 1, 1, ADC_CHANNEL_TEMP};
+void adc_isr(void);
 
-//UART bufers and positions
-uint8_t aTxBufferPos = 0;
+//
+uint8_t channel_array[] = { ADC_CHANNEL_TEMP };    //readme 1, 1, TEMP
+
+//
+uint8_t aTxBufferPos = 0;                           //usage as semaphore
 uint8_t aTxBuffer[TXBUFFERSIZE];
+
 //
 uint8_t aRxBufferPos = 0;
 uint8_t aRxBuffer[RXBUFFERSIZE];
+
 //
 uint8_t cnt = 1;
+//
+float testf = -1.23456f;
+
 
 /**
   * @brief
@@ -44,6 +52,16 @@ uint8_t cnt = 1;
 FILE *fp;
 static ssize_t _iord(void *_cookie, char *_buf, size_t _n);
 static ssize_t _iowr(void *_cookie, const char *_buf, size_t _n);
+void transmitBuffer(void);
+
+/**
+  * @brief
+  * @retval
+  */
+void adc_isr(void)
+{
+    BKPT;
+}
 
 /**
   * @brief
@@ -61,8 +79,11 @@ void usart1_isr(void)
         USART_CR1(USART1) |= USART_CR1_TXEIE;
         gpio_toggle(GPIOB, GPIO0);
         gpio_toggle(GPIOB, GPIO1);
-        hex2led(0x55aa55aa);
-        dot(cnt++%8, 1);
+        // hex2led(0x55aa55aa);
+        // dec2led(-123456);
+        float2led(testf);
+        // dot(cnt++%8, 1);
+        aTxBuffer[7]=cnt++;      //movement
         transmitBuffer();
         // BKPT;
     }
@@ -144,7 +165,7 @@ static FILE *usart_setup(uint32_t dev)
      *
      */
     cookie_io_functions_t stub = { _iord, _iowr, NULL, NULL };
-    FILE *fp = fopencookie((void *)dev, "rw+", stub);
+    fp = fopencookie((void *)dev, "rw+", stub);
     /* Do not buffer the serial line */
     setvbuf(fp, NULL, _IONBF, 0);
 
@@ -172,14 +193,13 @@ static void gpio_setup(void)
     /* Setup USART RX pin as alternate function. */
     gpio_set_af(GPIOA, GPIO_AF1, GPIO10);
 
-
     //setup LEDS
     gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0);
     gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO1);
 
     //MCO
     gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO8);
-    gpio_set_output_options(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO8);
+    gpio_set_output_options(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ, GPIO8);
     gpio_set_af(GPIOA, 0, GPIO8);
 
     gpio_set(GPIOB, GPIO0);
@@ -212,8 +232,6 @@ static void clock_setup(void)
     rcc_wait_for_osc_ready(RCC_PLL);
     rcc_set_sysclk_source(RCC_PLL);
 
-    // rcc_set_usbclk_source(RCC_PLL);
-
     rcc_apb1_frequency = 48000000;
     rcc_ahb_frequency = 48000000;
 
@@ -224,17 +242,11 @@ static void clock_setup(void)
     /* Enable clocks for USART. */
     rcc_periph_clock_enable(RCC_USART1);
 
-    /* Enable DMA1 clock */
-    // rcc_periph_clock_enable(RCC_DMA1);          //dma for USART TX only for now
-
     //MCO stuff for debugging serial speed
-    // MCKOE
-
     // rcc_set_mco( RCC_CFGR_MCO_HSE  );      //source for mco and prescaler. helper function with 24 bits shift
     // rcc_set_mco( RCC_CFGR_MCO_PLL );      //source for mco and prescaler. helper function with 24 bits shift. can not set div/1/2
-    rcc_set_mco( RCC_CFGR_MCO_SYSCLK );
-
-#pragma message(VALUE(RCC_MCO_NODIV))
+    // rcc_set_mco( RCC_CFGR_MCO_SYSCLK );
+    rcc_set_mco( RCC_CFGR_MCO_HSI14 );
 }
 
 /**
@@ -252,33 +264,49 @@ static void adc_setup(void)
     gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO2);
     gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO3);
 
-	adc_power_off(ADC1);
-	adc_set_clk_source(ADC1, ADC_CLKSOURCE_ADC);
-	adc_calibrate(ADC1);
-	adc_set_operation_mode(ADC1, ADC_MODE_SCAN);
-	adc_disable_external_trigger_regular(ADC1);
+    adc_power_off(ADC1);                //Ensure that ADEN = 0 and DMAEN = 0. dali da chakame za adcen == 0 ?
+    ADC1_CFGR1 &= ~ADC_CFGR1_DMAEN;
+
+    adc_calibrate(ADC1);
+    // adc_calibrate_wait_finish(ADC1);            //Vch = (3.3V * VREFINT_CAL * ADC_DATA) / (VREFINT_DATA * FULL_SCALE)   ...todo readme
+
+    adc_set_clk_source(ADC1, ADC_CLKSOURCE_ADC);            //readme for HSI CLK ADC calibrate
+
+    adc_set_operation_mode(ADC1, ADC_MODE_SEQUENTIAL);
+
+    //
+    // ADC1_SMPR |= ADC_SMPR_SMP_0 | ADC_SMPR_SMP_1 | ADC_SMPR_SMP_2;
+
+    // ADC1_IER = ADC_IER_EOCIE | ADC_IER_EOSEQIE | ADC_IER_OVRIE;
+    adc_enable_eoc_interrupt(ADC1);
+    adc_enable_eoc_sequence_interrupt(ADC1);
+    adc_enable_overrun_interrupt(ADC1);
+
+    // adc_disable_external_trigger_regular(ADC1);
 	adc_set_right_aligned(ADC1);
 
-	adc_enable_temperature_sensor();
+    adc_enable_temperature_sensor();
 
-	adc_set_sample_time_on_all_channels(ADC1, ADC_SMPTIME_071DOT5);
+    adc_set_sample_time_on_all_channels(ADC1, ADC_SMPTIME_001DOT5);
 	adc_set_regular_sequence(ADC1, 1, channel_array);
 	adc_set_resolution(ADC1, ADC_RESOLUTION_12BIT);
 	adc_disable_analog_watchdog(ADC1);
 	adc_power_on(ADC1);
 
-	/* Wait for ADC starting up. */
+    /* Wait for ADC starting up. */  //fixme.. more accurate waiting for interrupt
 	int i;
 	for (i = 0; i < 800000; i++) {    /* Wait a bit. */
 		__asm__("nop");
 	}
+    nvic_enable_irq(NVIC_ADC_COMP_IRQ);
+    nvic_set_priority(NVIC_ADC_COMP_IRQ,0);
 }
 
 /**
   * @brief
   * @retval
   */
-void transmitBuffer()
+void transmitBuffer(void)
 {
     for (uint8_t i=0; i<8; i++) {
         // usart_send_blocking(USART1, aTxBuffer[i]);
@@ -292,12 +320,11 @@ void transmitBuffer()
   */
 int main(void)
 {
-    uint16_t temp;
+    // uint16_t temp;
 
     clock_setup();
     gpio_setup();
-    fp = usart_setup(USART1);
-
+    fp = usart_setup(USART1);       //
 	adc_setup();
 
     allsegmentsoff();
@@ -305,10 +332,10 @@ int main(void)
     // BKPT;
 
 	while (1) {
-		adc_start_conversion_regular(ADC1);
-        while (!(adc_eoc(ADC1)));
+        // adc_start_conversion_regular(ADC1);
+  //       while (!(adc_eoc(ADC1)));
 
-		temp = adc_read_regular(ADC1);
+        // temp = adc_read_regular(ADC1);
         // my_usart_print_int(USART1, temp);
 
 		int i;

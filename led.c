@@ -2,6 +2,7 @@
 #include <libopencm3/stm32/usart.h>
 
 extern uint8_t aTxBuffer[];
+extern uint8_t aTxBufferPos;
 
 /**
   * @brief
@@ -84,6 +85,8 @@ void hex2led(uint32_t input)
     uint8_t digit = 0x00;
     uint8_t pos = 7;
 
+    aTxBufferPos = 1;
+
     // 7 digits?
     while( start > 0 )
     {
@@ -92,6 +95,7 @@ void hex2led(uint32_t input)
         input -= digit * start;
         start /= 0x10;
     }
+    aTxBufferPos = 0;
 }
 
 /**
@@ -121,6 +125,78 @@ void dot(uint8_t ind, uint8_t light)
 }
 
 /**
+  * @brief float to LED
+  * @retval
+  */
+void float2led(float input)
+{
+    int resultS = input;
+    int result = resultS;
+    int8_t sign = 1;
+
+
+    if ( result < 0 ) {
+        result *= -1;
+        sign = -1;
+        input *= -1.0f;
+        resultS = result;
+    }
+
+    //check for sign
+
+    if ( result == 0 ) {
+        result = (int) (input * 100000);
+    }
+    else if ( (result >= 1) & (result <= 9) ) {
+        result = (int) (input * 100000);
+    }
+    else if ( (result >= 10) & (result <= 99) ) {
+        result = (int) (input * 10000);
+    }
+    else if ( (result >= 100) & (result <= 999) ) {
+        result = (int) (input * 1000);
+    }
+    else if ( (result >= 1000) & (result <= 9999) ) {
+        result = (int) (input * 100);
+    }
+    else if ( (result >= 10000) & (result <= 99999) ) {
+        result = (int) (input * 10);
+    }
+    else if ( (result >= 100000) & (result <= 999999) ) {
+        result = (int) (input * 1);
+    }
+
+    result *= sign;
+
+    dec2led(result);
+
+    result *= sign;
+
+    //putdot
+    if ( resultS == 0 ) {
+        dot(5, 1);
+    }
+    else if ( (resultS >= 1) & (resultS <= 9) ) {
+        dot(5, 1);
+    }
+    else if ( (resultS >= 10) & (resultS <= 99) ) {
+        dot(4, 1);
+    }
+    else if ( (resultS >= 100) & (resultS <= 999) ) {
+        dot(3, 1);
+    }
+    else if ( (resultS >= 1000) & (resultS <= 9999) ) {
+        dot(2, 1);
+    }
+    else if ( (resultS >= 10000) & (resultS <= 99999) ) {
+        dot(1, 1);
+    }
+    else if ( (resultS >= 100000) & (resultS <= 999999) ) {
+        dot(0, 1);
+    }
+}
+
+/**
   * @briefdecimal to LED
   * @retval
   */
@@ -129,6 +205,8 @@ void dec2led(int input)
     uint32_t start = 1000000;
     uint8_t digit = 0x00;
     uint8_t pos = 6;
+
+    aTxBufferPos = 1;
 
     // 7 digits
     if (input < 0) {
@@ -143,4 +221,5 @@ void dec2led(int input)
         input -= digit * start;
         start /= 10;
     }
+    aTxBufferPos = 0;
 }
