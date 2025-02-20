@@ -14,8 +14,6 @@
 #include <libopencm3/stm32/f0/gpio.h>
 
 #include <stdio.h>
-// #include <errno.h>
-// #include <stddef.h>
 #include <sys/types.h>
 
 #include "led.h"
@@ -30,8 +28,8 @@
 void adc_isr(void);
 
 //
-uint8_t channel_array[] = { 1, 1, ADC_CHANNEL_TEMP };    //readme 1, 1, TEMP
-
+uint8_t channel_array[] = { 0, 1, 2, 3, ADC_CHANNEL_TEMP, ADC_CHANNEL_VREF };    //readme 1, 1, TEMP
+// uint8_t channel_array[] = { ADC_CHANNEL_VREF, ADC_CHANNEL_VBAT };    //readme 1, 1, TEMP
 //
 uint8_t aTxBufferPos = 0;                           //usage as semaphore
 uint8_t aTxBuffer[TXBUFFERSIZE];
@@ -46,6 +44,9 @@ uint8_t cnt = 1;
 float testf = -9999.00030f;
 int8_t testfsign = 1;
 
+uint8_t adcWCP;             //channel in process
+uint32_t adcCHA[6];         //
+
 /**
   * @brief
   */
@@ -53,6 +54,13 @@ FILE *fp;
 static ssize_t _iord(void *_cookie, char *_buf, size_t _n);
 static ssize_t _iowr(void *_cookie, const char *_buf, size_t _n);
 void transmitBuffer(void);
+
+
+/* Temperature sensor calibration value address */
+#define TEMP110_CAL_ADDR ((uint16_t*) ((uint32_t) 0x1FFFF7C2))
+#define TEMP30_CAL_ADDR ((uint16_t*) ((uint32_t) 0x1FFFF7B8))
+#define VDD_CALIB ((uint16_t) (330))
+#define VDD_APPLI ((uint16_t) (330))
 
 /**
   * @brief
@@ -78,13 +86,20 @@ static void adc2_setup(void)
 
     adc_power_off(ADC1);
     adc_set_clk_source(ADC1, ADC_CLKSOURCE_ADC);
+
     adc_calibrate(ADC1);
+    adc_calibrate_wait_finish(ADC1);
+
     adc_set_operation_mode(ADC1, ADC_MODE_SCAN);
     adc_disable_external_trigger_regular(ADC1);
     adc_set_right_aligned(ADC1);
+    //
     adc_enable_temperature_sensor();
+    adc_enable_vrefint();
+    adc_enable_vbat_sensor();
+    //
     adc_set_sample_time_on_all_channels(ADC1, ADC_SMPTIME_071DOT5);
-    adc_set_regular_sequence(ADC1, 1, channel_array);
+    // adc_set_regular_sequence(ADC1, 7, channel_array);
     adc_set_resolution(ADC1, ADC_RESOLUTION_12BIT);
     adc_disable_analog_watchdog(ADC1);
     adc_power_on(ADC1);
@@ -120,12 +135,57 @@ void usart1_isr(void)
         // BKPT;
     }
 
-    if (aRxBuffer[0] == 0x01) {
-        testfsign = 1;
+    // //buttons count up
+    // if (aRxBuffer[0] == 0x01) {
+    //     testfsign = 1;
+    // }
+    // //buttons count down
+    // if (aRxBuffer[0] == 0x02) {
+    //     testfsign = -1;
+    // }
+    //adc channel 0
+    if (aRxBuffer[0] == ( 1 << 7 ) ) {
+        adcWCP = channel_array[0];
+        testf = adcCHA[adcWCP];
+        aTxBuffer[7] = 0x80;
     }
+    //adc channel 1
+    if (aRxBuffer[0] == ( 1 << 6 ) ) {
+        adcWCP = channel_array[1];
+        testf = adcCHA[adcWCP];
+        aTxBuffer[7] = 0x40;
+    }
+    //adc channel 2
+    if (aRxBuffer[0] == ( 1 << 5 ) ) {
+        adcWCP = channel_array[2];
+        testf = adcCHA[adcWCP];
+        aTxBuffer[7] = 0x20;
+    }
+    //adc channel 3
+    if (aRxBuffer[0] == ( 1 << 4 ) ) {
+        adcWCP = channel_array[3];
+        testf = adcCHA[adcWCP];
+        aTxBuffer[7] = 0x10;
+    }
+    //adc channel 4
+    if (aRxBuffer[0] == ( 1 << 3 ) ) {
+        adcWCP = channel_array[4];
+        // testf = adcCHA[4];
 
-    if (aRxBuffer[0] == 0x02) {
-        testfsign = -1;
+        testf = (((int32_t) adcCHA[4] * VDD_APPLI / VDD_CALIB) - (int32_t) *TEMP30_CAL_ADDR );     //PAGE 954
+        testf *= (int32_t)(110 - 30);
+        testf /= (int32_t)(*TEMP110_CAL_ADDR - *TEMP30_CAL_ADDR);
+        testf += 30.0f;
+
+        // testf = ( (int32_t)(110-30) / (int32_t) (*TEMP110_CAL_ADDR-*TEMP30_CAL_ADDR)) * (int32_t) (adcCHA[4]-*TEMP30_CAL_ADDR) + 30.0f;
+        // testf = VDD_CALIB;
+        aTxBuffer[7] = 0x08;
+    }
+    //adc channel 5
+    if (aRxBuffer[0] == ( 1 << 2 ) ) {
+        adcWCP = channel_array[5];
+        testf = adcCHA[5];
+        aTxBuffer[7] = 0x04;
     }
 
     if (((USART_CR1(USART1) & USART_CR1_TXEIE) != 0) && ((USART_ISR(USART1) & USART_ISR_TXE) != 0)) {
@@ -322,8 +382,8 @@ static void adc_setup(void)
 
     adc_enable_temperature_sensor();
 
-    adc_set_sample_time_on_all_channels(ADC1, ADC_SMPTIME_001DOT5);
-	adc_set_regular_sequence(ADC1, 1, channel_array);
+    adc_set_sample_time_on_all_channels(ADC1, ADC_SMPTIME_071DOT5);
+    // adc_set_regular_sequence(ADC1, 1, channel_array);
 	adc_set_resolution(ADC1, ADC_RESOLUTION_12BIT);
 	adc_disable_analog_watchdog(ADC1);
 	adc_power_on(ADC1);
@@ -335,6 +395,18 @@ static void adc_setup(void)
 	}
     nvic_enable_irq(NVIC_ADC_COMP_IRQ);
     nvic_set_priority(NVIC_ADC_COMP_IRQ,0);
+}
+
+
+static uint16_t read_adc_naiive(uint8_t channel)
+{
+    uint8_t channel_array[16];
+    channel_array[0] = channel;
+    adc_set_regular_sequence(ADC1, 1, channel_array);
+    adc_start_conversion_regular(ADC1);
+    while (!adc_eoc(ADC1));
+    uint16_t reg16 = adc_read_regular(ADC1);
+    return reg16;
 }
 
 /**
@@ -355,7 +427,7 @@ void transmitBuffer(void)
   */
 int main(void)
 {
-    uint16_t temp;
+    // uint16_t temp;
 
     clock_setup();
     gpio_setup();
@@ -368,17 +440,30 @@ int main(void)
     // BKPT;
 
 	while (1) {
-        adc_start_conversion_regular(ADC1);
-        while (!(adc_eoc(ADC1)));
+        int i;
+        for(i=0;i<6;i++)
+        {
+            if (i == 0) {
+                adcCHA[i] = read_adc_naiive(i);
+            } else if (i == 1) {
+                adcCHA[i] = read_adc_naiive(i);
+            } else if (i == 2) {
+                adcCHA[i] = read_adc_naiive(i);
+            } else if (i == 3) {
+                adcCHA[i] = read_adc_naiive(i);
+            } else if (i == 4) {
+                adcCHA[i] = read_adc_naiive(ADC_CHANNEL_TEMP);
+            } else if (i == 5) {
+                adcCHA[i] = read_adc_naiive(ADC_CHANNEL_VREF);
+            } else {
+                BKPT;
+            }
+        }
 
-        temp = adc_read_regular(ADC1);
-        // my_usart_print_int(USART1, temp);
-
-		int i;
 		for (i = 0; i < 800000; i++) {   /* Wait a bit. */
 			__asm__("nop");
 		}
-        testf += 0.1f*testfsign;
+        // testf = temp;
 	}
 
 	return 0;

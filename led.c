@@ -10,7 +10,7 @@ extern uint8_t aTxBufferPos;
   */
 void allsegmentsoff()
 {
-    for(int i=0;i<8;i++) {
+    for(int i=0;i<7;i++) {
         aTxBuffer[i] = __null;
     }
 }
