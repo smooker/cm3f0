@@ -17,7 +17,7 @@
 ## along with this library.  If not, see <http://www.gnu.org/licenses/>.
 ##
 
-BINARY = adc
+BINARY = main
 
 LDSCRIPT = ./stm32f031k6t6.ld
 

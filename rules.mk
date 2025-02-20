@@ -104,6 +104,7 @@ TGT_CFLAGS	+= $(ARCH_FLAGS)
 TGT_CFLAGS	+= -Wextra -Wshadow -Wimplicit-function-declaration
 TGT_CFLAGS	+= -Wredundant-decls -Wmissing-prototypes -Wstrict-prototypes
 TGT_CFLAGS	+= -fno-common -ffunction-sections -fdata-sections
+TGT_CFLAGS	+= -fno-rtti -fno-exceptions
 
 ###############################################################################
 # C++ flags
@@ -135,8 +136,9 @@ endif
 ###############################################################################
 # Used libraries
 
-LDLIBS		+= -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
-
+#LDLIBS		+= -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
+#smooker
+LDLIBS          += -Wl,--start-group -lc -lgcc -lnosys -Wl,--end-group
 ###############################################################################
 ###############################################################################
 ###############################################################################

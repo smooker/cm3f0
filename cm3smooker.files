@@ -1,5 +1,5 @@
 README.md
-adc.c
+main.c
 adc.map
 go.sh
 led.h
@@ -9,8 +9,6 @@ cm3smooker.h
 ledsegments.h
 led.c
 /home/chichko/src/stm32/libopencm3/include/libopencm3/stm32/f0/rcc.h
-
-
 ../libopencm3/lib/stm32/common/st_usbfs_core.h
 ../libopencm3/include/libopencm3/stm32/desig.h
 ../libopencm3/include/libopencm3/stm32/g4/crc.h

@@ -43,7 +43,7 @@ uint8_t aRxBuffer[RXBUFFERSIZE];
 //
 uint8_t cnt = 1;
 //
-float testf = -0.00030f;
+float testf = -9999.00030f;
 int8_t testfsign = 1;
 
 /**
@@ -336,7 +336,7 @@ int main(void)
 
 	while (1) {
         // adc_start_conversion_regular(ADC1);
-  //       while (!(adc_eoc(ADC1)));
+        // while (!(adc_eoc(ADC1)));
 
         // temp = adc_read_regular(ADC1);
         // my_usart_print_int(USART1, temp);
@@ -345,9 +345,84 @@ int main(void)
 		for (i = 0; i < 800000; i++) {   /* Wait a bit. */
 			__asm__("nop");
 		}
-        testf += 0.000001f*testfsign;
+        testf += 0.1f*testfsign;
 	}
 
 	return 0;
 }
 
+/**
+  * @brief
+  * @retval
+  */
+void _close(void)
+{
+    BKPT;
+}
+
+/**
+  * @brief
+  * @retval
+  */
+void _lseek(void)
+{
+    BKPT;
+}
+
+/**
+  * @brief
+  * @retval
+  */
+void _read(void)
+{
+    BKPT;
+}
+
+/**
+  * @brief
+  * @retval
+  */
+void _write(void)
+{
+    BKPT;
+}
+
+/**
+  * @brief
+  * @retval
+  */
+void _fstat_r(void)
+{
+    BKPT;
+}
+
+/**
+  * @brief
+  * @retval
+  */
+void _exit(void)
+{
+    BKPT;
+}
+
+/**
+  * @brief
+  * @retval
+  */
+void _isatty_r(void)
+{
+    BKPT;
+}
+
+int _getpid(void)
+{
+  return 1;
+}
+
+int _kill(int pid, int sig)
+{
+  (void)pid;
+  (void)sig;
+  errno = EINVAL;
+  return -1;
+}
