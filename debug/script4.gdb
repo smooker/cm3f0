@@ -3,8 +3,8 @@ set mem inaccessible-by-default off
 #target extended-remote 10.15.0.3:3333
 target extended-remote localhost:4242
 
-file ../adc.elf 
-load ../adc.hex
+file ../main.elf 
+load ../main.hex
 compare-sections
 #hbreak main
 

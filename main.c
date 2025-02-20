@@ -30,7 +30,7 @@
 void adc_isr(void);
 
 //
-uint8_t channel_array[] = { ADC_CHANNEL_TEMP };    //readme 1, 1, TEMP
+uint8_t channel_array[] = { 1, 1, ADC_CHANNEL_TEMP };    //readme 1, 1, TEMP
 
 //
 uint8_t aTxBufferPos = 0;                           //usage as semaphore
@@ -61,6 +61,39 @@ void transmitBuffer(void);
 void adc_isr(void)
 {
     BKPT;
+}
+
+
+/**
+  * @brief just copy paste
+  * @retval
+  */
+static void adc2_setup(void)
+{
+    rcc_periph_clock_enable(RCC_ADC);
+    rcc_periph_clock_enable(RCC_GPIOA);
+
+    gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO0);
+    gpio_mode_setup(GPIOA, GPIO_MODE_ANALOG, GPIO_PUPD_NONE, GPIO1);
+
+    adc_power_off(ADC1);
+    adc_set_clk_source(ADC1, ADC_CLKSOURCE_ADC);
+    adc_calibrate(ADC1);
+    adc_set_operation_mode(ADC1, ADC_MODE_SCAN);
+    adc_disable_external_trigger_regular(ADC1);
+    adc_set_right_aligned(ADC1);
+    adc_enable_temperature_sensor();
+    adc_set_sample_time_on_all_channels(ADC1, ADC_SMPTIME_071DOT5);
+    adc_set_regular_sequence(ADC1, 1, channel_array);
+    adc_set_resolution(ADC1, ADC_RESOLUTION_12BIT);
+    adc_disable_analog_watchdog(ADC1);
+    adc_power_on(ADC1);
+
+    /* Wait for ADC starting up. */
+    int i;
+    for (i = 0; i < 800000; i++) {    /* Wait a bit. */
+        __asm__("nop");
+    }
 }
 
 /**
@@ -322,12 +355,12 @@ void transmitBuffer(void)
   */
 int main(void)
 {
-    // uint16_t temp;
+    uint16_t temp;
 
     clock_setup();
     gpio_setup();
     fp = usart_setup(USART1);       //
-	adc_setup();
+    adc2_setup();
 
     allsegmentsoff();
     brightness(0xf4);
@@ -335,10 +368,10 @@ int main(void)
     // BKPT;
 
 	while (1) {
-        // adc_start_conversion_regular(ADC1);
-        // while (!(adc_eoc(ADC1)));
+        adc_start_conversion_regular(ADC1);
+        while (!(adc_eoc(ADC1)));
 
-        // temp = adc_read_regular(ADC1);
+        temp = adc_read_regular(ADC1);
         // my_usart_print_int(USART1, temp);
 
 		int i;
