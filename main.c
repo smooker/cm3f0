@@ -29,7 +29,7 @@ void adc_isr(void);
 
 //
 uint8_t channel_array[] = { 0, 1, 2, 3, ADC_CHANNEL_TEMP, ADC_CHANNEL_VREF };    //readme 1, 1, TEMP
-// uint8_t channel_array[] = { ADC_CHANNEL_VREF, ADC_CHANNEL_VBAT };    //readme 1, 1, TEMP
+
 //
 uint8_t aTxBufferPos = 0;                           //usage as semaphore
 uint8_t aTxBuffer[TXBUFFERSIZE];
@@ -42,6 +42,12 @@ uint8_t aRxBuffer[RXBUFFERSIZE];
 uint8_t cnt = 1;
 //
 float testf = -9999.00030f;
+//
+float arrf[32];             //array of floats for average
+uint8_t arri = 0;
+//
+float temp1f = -9999.00030f;
+float temp2f = -9999.00030f;
 int8_t testfsign = 1;
 
 uint8_t adcWCP;             //channel in process
@@ -59,9 +65,13 @@ void transmitBuffer(void);
 /* Temperature sensor calibration value address */
 #define TEMP110_CAL_ADDR ((uint16_t*) ((uint32_t) 0x1FFFF7C2))
 #define TEMP30_CAL_ADDR ((uint16_t*) ((uint32_t) 0x1FFFF7B8))
-#define VDD_CALIB ((uint16_t) (330))
-#define VDD_APPLI ((uint16_t) (330))
 
+// Vref = Vdd
+#define VDD_CALIB ((uint16_t) (330))
+#define VDD_APPLI ((uint16_t) (325))    //measured 3.252V
+
+//voltage coeff
+float vcoeff = (float) VDD_APPLI / (float) VDD_CALIB;
 /**
   * @brief
   * @retval
@@ -71,6 +81,16 @@ void adc_isr(void)
     BKPT;
 }
 
+static float averagef()
+{
+    int i;
+    float result = 0.0f;
+
+    for (i=0;i<32;i++) {
+        result += arrf[i];
+    }
+    return result / 32.0f;
+}
 
 /**
   * @brief just copy paste
@@ -146,9 +166,18 @@ void usart1_isr(void)
     //adc channel 0
     if (aRxBuffer[0] == ( 1 << 7 ) ) {
         adcWCP = channel_array[0];
-        testf = adcCHA[adcWCP];
+        // testf = adcCHA[adcWCP];
+        testf = (adcCHA[adcWCP] * 10.0f ) / 4095.0f ;
+        testf *= vcoeff;
         aTxBuffer[7] = 0x80;
     }
+    arrf[arri++] = (adcCHA[adcWCP] * 10.0f ) / 4095.0f ;
+    if ( arri > 31 ) {
+        arri = 0;
+    }
+    testf = averagef();
+    testf *= vcoeff;
+
     //adc channel 1
     if (aRxBuffer[0] == ( 1 << 6 ) ) {
         adcWCP = channel_array[1];
