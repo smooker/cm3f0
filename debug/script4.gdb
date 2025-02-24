@@ -7,9 +7,13 @@ file ../main.elf
 load ../main.hex
 compare-sections
 #hbreak main
+#watch arrf[0]
 
-
-
+#rwatch arrf[0]
+#info break
+#del 3
+#p/x *(uint32_t *)0x20000570
+#x/8xb 0x20000570
 
 #hbreak Core/Src/main.c:258
 #next
