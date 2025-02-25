@@ -13,6 +13,8 @@
 #include <libopencm3/stm32/usart.h>
 #include <libopencm3/stm32/dma.h>
 #include <libopencm3/stm32/gpio.h>
+#include <libopencm3/cm3/systick.h>
+#include <libopencm3/stm32/timer.h>
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -73,9 +75,19 @@ float vcoeff = (float) VDD_APPLI / (float) VDD_CALIB;
   * @brief
   * @retval
   */
+void sys_tick_handler(void)
+{
+
+}
+
+/**
+  * @brief
+  * @retval
+  */
 void adc_comp_isr(void)
 {
     if ( (ADC1_ISR & ADC_ISR_EOC) > 0 ) {
+        gpio_clear(GPIOB, GPIO1);
         // BKPT;
         adcCHA[adcWCP] = ADC1_DR;
         adc_clear_eoc_sequence_flag(ADC1);
@@ -134,7 +146,8 @@ static void adc2_setup(void)
 
     //
     adc_set_operation_mode(ADC1, ADC_MODE_SCAN);
-    adc_disable_external_trigger_regular(ADC1);
+    // adc_disable_external_trigger_regular(ADC1);
+    // adc_enable_external_trigger_regular(ADC1, )
     adc_set_right_aligned(ADC1);
 
     //
@@ -143,7 +156,12 @@ static void adc2_setup(void)
     adc_enable_vbat_sensor();
 
     //
-    adc_set_sample_time_on_all_channels(ADC1, ADC_SMPTIME_071DOT5);
+    // tCONV = Sampling time + 12.5 x ADC clock cycles
+    // Example:
+    // With ADC_CLK = 14 MHz and a sampling time of 1.5 ADC clock cycles:
+    // tCONV = 1.5 + 12.5 = 14 ADC clock cycles = 1 µs
+
+    adc_set_sample_time_on_all_channels(ADC1, ADC_SMPTIME_239DOT5);         //readme
     // adc_set_regular_sequence(ADC1, 7, channel_array);
     adc_set_resolution(ADC1, ADC_RESOLUTION_12BIT);
     adc_disable_analog_watchdog(ADC1);
@@ -161,6 +179,28 @@ static void adc2_setup(void)
     nvic_enable_irq(NVIC_ADC_COMP_IRQ);
 }
 
+
+void tim_setup(void)
+{
+    rcc_periph_clock_enable(RCC_TIM14);
+    nvic_enable_irq(NVIC_TIM14_IRQ);
+    rcc_periph_reset_pulse(RST_TIM14);
+
+
+    //PAGE 471
+
+    /* Timer global mode:
+     * - No divider
+     * - Alignment edge
+     * - Direction up
+     * (These are actually default values after reset above, so this call
+     * is strictly unnecessary, but demos the api for alternative settings)
+     */
+    timer_set_mode(TIM14, TIM_CR1_CKD_CK_INT,
+        TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
+    //here smooker
+}
+
 /**
   * @brief
   * @retval
@@ -174,7 +214,6 @@ void usart1_isr(void)
         /* Enable transmit interrupt so it sends back the data. */
         USART_CR1(USART1) |= USART_CR1_TXEIE;
         gpio_toggle(GPIOB, GPIO0);
-        gpio_toggle(GPIOB, GPIO1);
 
         //adc channel 0
         if ( (aRxBuffer[0] == ( 1 << 7 )) | (ledCHA == 0) ) {
@@ -224,9 +263,9 @@ void usart1_isr(void)
 
         //adc channel 6
         if (aRxBuffer[0] == ( 1 << 1 ) ) {
+            //debug only
+            testf = adcCHA[4];
             aTxBuffer[7] = 0x02;
-            transmitBuffer();
-            BKPT;
         }
 
         /////////////////////////////////////////////
@@ -319,6 +358,23 @@ static FILE *usart_setup(uint32_t dev)
     return fp;
 }
 
+/*
+ * Set up timer to fire every x milliseconds
+ * This is a unusual usage of systick, be very careful with the 24bit range
+ * of the systick counter!  You can range from 1 to 2796ms with this.
+ */
+static void systick_setup(int xms)
+{
+    /* div8 per ST, stays compatible with M3/M4 parts, well done ST */
+    systick_set_clocksource(STK_CSR_CLKSOURCE_EXT);
+    /* clear counter so it starts right away */
+    STK_CVR = 0;
+
+    systick_set_reload(rcc_ahb_frequency / 8 / 1000 * xms);
+    systick_counter_enable();
+    systick_interrupt_enable();
+}
+
 /**
   * @brief
   * @retval
@@ -349,8 +405,8 @@ static void gpio_setup(void)
     gpio_set_output_options(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ, GPIO8);
     gpio_set_af(GPIOA, 0, GPIO8);
 
-    gpio_set(GPIOB, GPIO0);
-    gpio_set(GPIOB, GPIO1);
+    gpio_clear(GPIOB, GPIO0);
+    gpio_clear(GPIOB, GPIO1);
 }
 
 /**
@@ -402,10 +458,11 @@ static void clock_setup(void)
   */
 static void read_adc_naiive(uint8_t channel)
 {
-    uint8_t channel_array2[16];     //fixme
-    channel_array2[0] = channel;
-    // asm("bkpt 255");
-    adc_set_regular_sequence(ADC1, 1, channel_array2);
+    while ( (ADC1_ISR & ADC_ISR_ADRDY) == 0 ) {
+        __asm__("nop");
+    }
+    adc_set_regular_sequence(ADC1, 1, channel_array);
+    gpio_set(GPIOB, GPIO1);
     adc_start_conversion_regular(ADC1);
 }
 
@@ -429,6 +486,9 @@ int main(void)
 {
     clock_setup();
     gpio_setup();
+
+    // systick_setup(20);           //l8r
+
     adc2_setup();
     fp = usart_setup(USART1);       //
 
@@ -441,29 +501,28 @@ int main(void)
     }
 
 	while (1) {
-        for(adcWCP=0;adcWCP<6;adcWCP++)
-        {
-            if ( (ADC1_ISR & ADC_ISR_ADRDY) > 0 ) {
-                if (adcWCP == 0) {
-                    read_adc_naiive(adcWCP);       // 0 - 3 channels
-                } else if (adcWCP == 1) {
-                    read_adc_naiive(adcWCP);
-                } else if (adcWCP == 2) {
-                    read_adc_naiive(adcWCP);
-                } else if (adcWCP == 3) {
-                    read_adc_naiive(adcWCP);
-                } else if (adcWCP == 4) {
-                    read_adc_naiive(ADC_CHANNEL_TEMP);  //
-                } else if (adcWCP == 5) {
-                    read_adc_naiive(ADC_CHANNEL_VREF);
-                } else {
-                    BKPT;
-                }
-            }
-            for (i = 0; i < 80000; i++) {   /* Wait a bit. */      //fixme
-                __asm__("nop");
+        if (adcWCP != 0)
+            BKPT;
+        if ( (ADC1_ISR & ADC_ISR_ADRDY) > 0 ) {
+            if (adcWCP == 0) {
+                read_adc_naiive(adcWCP);       // 0 - 3 channels
+            } else if (adcWCP == 1) {
+                read_adc_naiive(adcWCP);
+            } else if (adcWCP == 2) {
+                read_adc_naiive(adcWCP);
+            } else if (adcWCP == 3) {
+                read_adc_naiive(adcWCP);
+            } else if (adcWCP == 4) {
+                read_adc_naiive(ADC_CHANNEL_TEMP);  //
+            } else if (adcWCP == 5) {
+                read_adc_naiive(ADC_CHANNEL_VREF);
+            } else {
+                BKPT;
             }
         }
+        // for (i = 0; i < 80000; i++) {   /* Wait a bit. */      //fixme
+        //     __asm__("nop");
+        // }
 	}
 	return 0;
 }
