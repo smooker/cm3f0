@@ -383,3 +383,8 @@ led.c
 ../libopencm3/include/libopencm3/stm32/i2c.h
 ../libopencm3/include/libopencm3/ethernet/mac_stm32fxx7.h
 ../libopencm3/include/libopencmsis/stm32/f0/irqhandlers.h
+../libopencm3/lib/stm32/common/dma_common_l1f013.c
+../libopencm3/lib/stm32/common/gpio_common_f0234.c
+../libopencm3/lib/stm32/common/timer_common_f0234.c
+../libopencm3/lib/stm32/common/flash_common_f01.c
+../libopencm3/lib/stm32/common/rtc_common_l1f024.c

@@ -15,6 +15,7 @@
 #include <libopencm3/stm32/gpio.h>
 #include <libopencm3/cm3/systick.h>
 #include <libopencm3/stm32/timer.h>
+#include <libopencm3/stm32/iwdg.h>
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -71,6 +72,10 @@ static void transmitBuffer(void);
 //voltage coeff
 float vcoeff = (float) VDD_APPLI / (float) VDD_CALIB;
 
+
+//DECLARATIONS
+static void read_adc_naiive(uint8_t channel);
+
 /**
   * @brief
   * @retval
@@ -86,11 +91,12 @@ void sys_tick_handler(void)
   */
 void adc_comp_isr(void)
 {
-    if ( (ADC1_ISR & ADC_ISR_EOC) > 0 ) {
+    if ( (ADC1_ISR & ADC_ISR_EOSEQ) > 0 ) {
         gpio_clear(GPIOB, GPIO1);
         // BKPT;
         adcCHA[adcWCP] = ADC1_DR;
         adc_clear_eoc_sequence_flag(ADC1);
+        gpio_clear(GPIOB, GPIO0);
     }
 }
 
@@ -162,6 +168,7 @@ static void adc2_setup(void)
     // tCONV = 1.5 + 12.5 = 14 ADC clock cycles = 1 µs
 
     adc_set_sample_time_on_all_channels(ADC1, ADC_SMPTIME_239DOT5);         //readme
+    // adc_set_sample_time_on_all_channels(ADC1, ADC_SMPTIME_071DOT5);         //readme
     // adc_set_regular_sequence(ADC1, 7, channel_array);
     adc_set_resolution(ADC1, ADC_RESOLUTION_12BIT);
     adc_disable_analog_watchdog(ADC1);
@@ -182,23 +189,75 @@ static void adc2_setup(void)
 
 void tim_setup(void)
 {
+    //
     rcc_periph_clock_enable(RCC_TIM14);
-    nvic_enable_irq(NVIC_TIM14_IRQ);
-    rcc_periph_reset_pulse(RST_TIM14);
 
+    //check cortex timer system divisor!!!
+
+    //
+    nvic_enable_irq(NVIC_TIM14_IRQ);
+    //
+    rcc_periph_reset_pulse(RST_TIM14);
 
     //PAGE 471
 
-    /* Timer global mode:
-     * - No divider
-     * - Alignment edge
-     * - Direction up
-     * (These are actually default values after reset above, so this call
-     * is strictly unnecessary, but demos the api for alternative settings)
-     */
+    //
     timer_set_mode(TIM14, TIM_CR1_CKD_CK_INT,
         TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
-    //here smooker
+
+    timer_set_prescaler(TIM14, 0);
+
+    /* Disable preload. */
+    // timer_disable_preload(TIM14);
+    // timer_enable_preload(TIM14);
+    // timer_continuous_mode(TIM14);
+
+    timer_set_counter(TIM14, 0);
+    timer_set_period(TIM14, 48000);                    //1ms
+
+    timer_set_oc_value(TIM14, TIM_OC1, 1000);
+    // timer_enable_oc_preload(TIM14, TIM_OC1);
+    // timer_enable_oc_clear(TIM14, TIM_OC1);
+
+    timer_enable_irq(TIM14, TIM_DIER_CC1IE);
+
+    timer_enable_counter(TIM14);
+}
+
+void tim14_isr(void)
+{
+    if (timer_get_flag(TIM14, TIM_SR_UIF)) {
+        // timer_set_counter(TIM14, 0);
+        /* Clear compare interrupt flag. */
+        timer_clear_flag(TIM14, TIM_SR_UIF);
+
+        /*
+         * Get current timer value to calculate next
+         * compare register value.
+         */
+        // uint16_t time = timer_get_counter(TIM14);
+
+        /* Toggle LED to indicate compare event. */
+        gpio_set(GPIOB, GPIO0);
+        //start of ADC conversion
+        if ( (ADC1_ISR & ADC_ISR_ADRDY) > 0 ) {
+            if (adcWCP == 0) {
+                read_adc_naiive(adcWCP);       // 0 - 3 channels
+            } else if (adcWCP == 1) {
+                read_adc_naiive(adcWCP);
+            } else if (adcWCP == 2) {
+                read_adc_naiive(adcWCP);
+            } else if (adcWCP == 3) {
+                read_adc_naiive(adcWCP);
+            } else if (adcWCP == 4) {
+                read_adc_naiive(ADC_CHANNEL_TEMP);  //
+            } else if (adcWCP == 5) {
+                read_adc_naiive(ADC_CHANNEL_VREF);
+            } else {
+                BKPT;
+            }
+        }
+    }
 }
 
 /**
@@ -213,7 +272,7 @@ void usart1_isr(void)
 
         /* Enable transmit interrupt so it sends back the data. */
         USART_CR1(USART1) |= USART_CR1_TXEIE;
-        gpio_toggle(GPIOB, GPIO0);
+        // gpio_toggle(GPIOB, GPIO0);       //debug only
 
         //adc channel 0
         if ( (aRxBuffer[0] == ( 1 << 7 )) | (ledCHA == 0) ) {
@@ -398,15 +457,16 @@ static void gpio_setup(void)
 
     //setup LEDS
     gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO0);
+    gpio_set_output_options(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO0);
     gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO1);
+    gpio_set_output_options(GPIOB, GPIO_OTYPE_PP, GPIO_OSPEED_100MHZ, GPIO1);
+    gpio_set(GPIOB, GPIO0);
+    gpio_set(GPIOB, GPIO1);
 
     //MCO
     gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO8);
     gpio_set_output_options(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_25MHZ, GPIO8);
     gpio_set_af(GPIOA, 0, GPIO8);
-
-    gpio_clear(GPIOB, GPIO0);
-    gpio_clear(GPIOB, GPIO1);
 }
 
 /**
@@ -462,7 +522,7 @@ static void read_adc_naiive(uint8_t channel)
         __asm__("nop");
     }
     adc_set_regular_sequence(ADC1, 1, channel_array);
-    gpio_set(GPIOB, GPIO1);
+    gpio_set(GPIOB, GPIO0);
     adc_start_conversion_regular(ADC1);
 }
 
@@ -492,34 +552,24 @@ int main(void)
     adc2_setup();
     fp = usart_setup(USART1);       //
 
+    // iwdg_set_period_ms(25);
+    // iwdg_start();
+
+    tim_setup();
+
     allsegmentsoff();
     brightness(0xf4);
 
-    int i;
-    for (i=0;i<32;i++) {
-        arrf[i] = 0.0f;
-    }
+    // int i;
+    // for (i=0;i<32;i++) {
+    //     arrf[i] = 0.0f;
+    // }
 
 	while (1) {
         if (adcWCP != 0)
             BKPT;
-        if ( (ADC1_ISR & ADC_ISR_ADRDY) > 0 ) {
-            if (adcWCP == 0) {
-                read_adc_naiive(adcWCP);       // 0 - 3 channels
-            } else if (adcWCP == 1) {
-                read_adc_naiive(adcWCP);
-            } else if (adcWCP == 2) {
-                read_adc_naiive(adcWCP);
-            } else if (adcWCP == 3) {
-                read_adc_naiive(adcWCP);
-            } else if (adcWCP == 4) {
-                read_adc_naiive(ADC_CHANNEL_TEMP);  //
-            } else if (adcWCP == 5) {
-                read_adc_naiive(ADC_CHANNEL_VREF);
-            } else {
-                BKPT;
-            }
-        }
+
+        // iwdg_reset();
         // for (i = 0; i < 80000; i++) {   /* Wait a bit. */      //fixme
         //     __asm__("nop");
         // }

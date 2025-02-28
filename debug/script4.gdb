@@ -5,7 +5,8 @@ target extended-remote localhost:4242
 
 file ../main.elf 
 load ../main.hex
-compare-sections
+#compare-sections
+c
 #hbreak main
 #watch arrf[0]
 
