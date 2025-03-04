@@ -388,3 +388,7 @@ led.c
 ../libopencm3/lib/stm32/common/timer_common_f0234.c
 ../libopencm3/lib/stm32/common/flash_common_f01.c
 ../libopencm3/lib/stm32/common/rtc_common_l1f024.c
+../libopencm3/lib/stm32/common/lptimer_common_all.c
+../libopencm3/lib/stm32/common/lptimer_common_all.c
+../libopencm3/lib/stm32/common/timer_common_all.c
+../libopencm3/lib/cm3/nvic.c

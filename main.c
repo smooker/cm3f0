@@ -11,11 +11,11 @@
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/usart.h>
-#include <libopencm3/stm32/dma.h>
+// #include <libopencm3/stm32/dma.h>
 #include <libopencm3/stm32/gpio.h>
-#include <libopencm3/cm3/systick.h>
+// #include <libopencm3/cm3/systick.h>
 #include <libopencm3/stm32/timer.h>
-#include <libopencm3/stm32/iwdg.h>
+// #include <libopencm3/stm32/iwdg.h>
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -71,7 +71,6 @@ static void transmitBuffer(void);
 
 //voltage coeff
 float vcoeff = (float) VDD_APPLI / (float) VDD_CALIB;
-
 
 //DECLARATIONS
 static void read_adc_naiive(uint8_t channel);
@@ -182,10 +181,19 @@ static void adc2_setup(void)
     adc_enable_eoc_interrupt(ADC1);
     adc_enable_eoc_sequence_interrupt(ADC1);
 
-    nvic_set_priority(NVIC_ADC_COMP_IRQ, 2);      //checkme priority in the docs
-    nvic_enable_irq(NVIC_ADC_COMP_IRQ);
+    // nvic_set_priority(NVIC_ADC_COMP_IRQ, 2);      //checkme priority in the docs
 }
 
+//priorities nvic page 216
+
+
+void nvic_setup(void)
+{
+    //todo.. priorities here
+    nvic_enable_irq(NVIC_USART1_IRQ);
+    nvic_enable_irq(NVIC_ADC_COMP_IRQ);
+    nvic_enable_irq(NVIC_TIM14_IRQ);
+}
 
 void tim_setup(void)
 {
@@ -195,7 +203,7 @@ void tim_setup(void)
     //check cortex timer system divisor!!!
 
     //
-    nvic_enable_irq(NVIC_TIM14_IRQ);
+    // nvic_enable_irq(NVIC_TIM14_IRQ);     //migrated to nvic_setup
     //
     rcc_periph_reset_pulse(RST_TIM14);
 
@@ -205,7 +213,7 @@ void tim_setup(void)
     timer_set_mode(TIM14, TIM_CR1_CKD_CK_INT,
         TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
 
-    timer_set_prescaler(TIM14, 0);
+    timer_set_prescaler(TIM14, 1);
 
     /* Disable preload. */
     // timer_disable_preload(TIM14);
@@ -213,23 +221,31 @@ void tim_setup(void)
     // timer_continuous_mode(TIM14);
 
     timer_set_counter(TIM14, 0);
-    timer_set_period(TIM14, 48000);                    //1ms
+    timer_clear_flag(TIM14, TIM_SR_UIF);
+    nvic_clear_pending_irq(NVIC_TIM14_IRQ);
+
+    timer_set_period(TIM14, 24000);                    //1ms
 
     timer_set_oc_value(TIM14, TIM_OC1, 1000);
     // timer_enable_oc_preload(TIM14, TIM_OC1);
     // timer_enable_oc_clear(TIM14, TIM_OC1);
 
-    timer_enable_irq(TIM14, TIM_DIER_CC1IE);
+    timer_enable_irq(TIM14, TIM_DIER_CC1IE);         //migrated to nvic_setup
+    timer_enable_counter(TIM14);                     //migrated to nvic_setup
+}
 
-    timer_enable_counter(TIM14);
+void tim_stop(void)
+{
+    timer_disable_counter(TIM(TIM14)); // disable timer
+    timer_set_counter(TIM(TIM14), 0); // reset timer counter
+    timer_clear_flag(TIM(TIM14), TIM_SR_UIF); // clear timer flag
+    nvic_clear_pending_irq(NVIC_TIM_IRQ(TIM14)); // clear IRQ flag
 }
 
 void tim14_isr(void)
 {
     if (timer_get_flag(TIM14, TIM_SR_UIF)) {
         // timer_set_counter(TIM14, 0);
-        /* Clear compare interrupt flag. */
-        timer_clear_flag(TIM14, TIM_SR_UIF);
 
         /*
          * Get current timer value to calculate next
@@ -257,7 +273,17 @@ void tim14_isr(void)
                 BKPT;
             }
         }
+        timer_clear_flag(TIM14, TIM_SR_UIF);
+        nvic_clear_pending_irq(NVIC_TIM14_IRQ);
+        return;
     }
+    if (timer_get_flag(TIM14, TIM_SR_CC1IF)) {
+        timer_clear_flag(TIM14, TIM_SR_CC1IF);
+        nvic_clear_pending_irq(NVIC_TIM14_IRQ);
+        return;
+    }
+    timer_disable_counter(TIM14);
+    BKPT;
 }
 
 /**
@@ -337,6 +363,7 @@ void usart1_isr(void)
         transmitBuffer();
         // BKPT;
     }
+    nvic_clear_pending_irq(NVIC_USART1_IRQ);
     // fixme later
     // if (((USART_CR1(USART1) & USART_CR1_TXEIE) != 0) && ((USART_ISR(USART1) & USART_ISR_TXE) != 0)) {
     //      /* Disable the TXE interrupt as we don't need it anymore. */
@@ -399,8 +426,8 @@ static FILE *usart_setup(uint32_t dev)
     /* Finally enable the USART. */
     usart_enable(dev);
 
-    nvic_set_priority(NVIC_USART1_IRQ, 0);      //checkme priority in the docs
-    nvic_enable_irq(NVIC_USART1_IRQ);
+    // nvic_set_priority(NVIC_USART1_IRQ, 4);      //checkme priority in the docs
+    nvic_enable_irq(NVIC_USART1_IRQ);        //migrated to nvid_setup
 
     // //TX DMA only... int multiplexor
     // nvic_set_priority(NVIC_DMA1_CHANNEL1_IRQ, 0);
@@ -417,22 +444,22 @@ static FILE *usart_setup(uint32_t dev)
     return fp;
 }
 
-/*
- * Set up timer to fire every x milliseconds
- * This is a unusual usage of systick, be very careful with the 24bit range
- * of the systick counter!  You can range from 1 to 2796ms with this.
- */
-static void systick_setup(int xms)
-{
-    /* div8 per ST, stays compatible with M3/M4 parts, well done ST */
-    systick_set_clocksource(STK_CSR_CLKSOURCE_EXT);
-    /* clear counter so it starts right away */
-    STK_CVR = 0;
+// /*
+//  * Set up timer to fire every x milliseconds
+//  * This is a unusual usage of systick, be very careful with the 24bit range
+//  * of the systick counter!  You can range from 1 to 2796ms with this.
+//  */
+// static void systick_setup(int xms)
+// {
+//     /* div8 per ST, stays compatible with M3/M4 parts, well done ST */
+//     systick_set_clocksource(STK_CSR_CLKSOURCE_EXT);
+//     /* clear counter so it starts right away */
+//     STK_CVR = 0;
 
-    systick_set_reload(rcc_ahb_frequency / 8 / 1000 * xms);
-    systick_counter_enable();
-    systick_interrupt_enable();
-}
+//     systick_set_reload(rcc_ahb_frequency / 8 / 1000 * xms);
+//     systick_counter_enable();
+//     systick_interrupt_enable();
+// }
 
 /**
   * @brief
@@ -550,20 +577,23 @@ int main(void)
     // systick_setup(20);           //l8r
 
     adc2_setup();
-    fp = usart_setup(USART1);       //
 
     // iwdg_set_period_ms(25);
     // iwdg_start();
 
     tim_setup();
 
+    fp = usart_setup(USART1);       //
+
+    nvic_setup();
+
     allsegmentsoff();
     brightness(0xf4);
 
-    // int i;
-    // for (i=0;i<32;i++) {
-    //     arrf[i] = 0.0f;
-    // }
+    int i;
+    for (i=0;i<32;i++) {
+        arrf[i] = 0.0f;
+    }
 
 	while (1) {
         if (adcWCP != 0)
