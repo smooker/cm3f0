@@ -135,7 +135,7 @@ TGT_LDFLAGS		+= -Wl,--print-gc-sections
 endif
 
 ifeq ($(ENABLE_SEMIHOSTING),1)
-TGT_LDFLAGS	+= --specs=rdimon.specs
+TGT_LDFLAGS	+= --specs=rdimon.specs 
 LDLIBS		+= -lrdimon
 DEFS		+= -DENABLE_SEMIHOSTING=1
 endif

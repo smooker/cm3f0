@@ -22,6 +22,15 @@
 
 #include "led.h"
 
+
+#ifdef ENABLE_SEMIHOSTING
+
+#if ENABLE_SEMIHOSTING == 1
+#pragma message ( "C Preprocessor got here!" )
+extern void initialise_monitor_handles(void);
+#endif
+#endif
+
 //
 #define BKPT asm("bkpt 255")
 
@@ -78,9 +87,9 @@ static void dma_write(char *data, int size);
 static void tim_setup(void);
 static void nvic_setup(void);
 
-void dma1_channel4_7_dma2_channel3_5_isr(void);
-void dma1_channel1_isr(void);
-void dma1_channel2_3_dma2_channel1_2_isr(void);
+// void dma1_channel4_7_dma2_channel3_5_isr(void);
+// void dma1_channel1_isr(void);
+// void dma1_channel2_3_dma2_channel1_2_isr(void);
 
 /**
   * @brief
@@ -640,6 +649,12 @@ void main(void)
 {
     clock_setup();
     gpio_setup();
+
+
+#if ENABLE_SEMIHOSTING == 1
+#pragma message ( "C Preprocessor got here2!" );
+    initialise_monitor_handles();
+#endif
 
     // systick_setup(20);           //l8r
 
