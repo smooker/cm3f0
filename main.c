@@ -11,7 +11,7 @@
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/stm32/usart.h>
-// #include <libopencm3/stm32/dma.h>
+#include <libopencm3/stm32/dma.h>
 #include <libopencm3/stm32/gpio.h>
 // #include <libopencm3/cm3/systick.h>
 #include <libopencm3/stm32/timer.h>
@@ -74,6 +74,13 @@ float vcoeff = (float) VDD_APPLI / (float) VDD_CALIB;
 
 //DECLARATIONS
 static void read_adc_naiive(uint8_t channel);
+static void dma_write(char *data, int size);
+static void tim_setup(void);
+static void nvic_setup(void);
+
+void dma1_channel4_7_dma2_channel3_5_isr(void);
+void dma1_channel1_isr(void);
+void dma1_channel2_3_dma2_channel1_2_isr(void);
 
 /**
   * @brief
@@ -186,16 +193,27 @@ static void adc2_setup(void)
 
 //priorities nvic page 216
 
+void dma1_channel4_7_dma2_channel3_5_isr(void)
+{
+    BKPT;
 
-void nvic_setup(void)
+}
+
+void dma1_channel1_isr(void)
+{
+    BKPT;
+}
+
+static void nvic_setup(void)
 {
     //todo.. priorities here
     nvic_enable_irq(NVIC_USART1_IRQ);
     nvic_enable_irq(NVIC_ADC_COMP_IRQ);
     nvic_enable_irq(NVIC_TIM14_IRQ);
+    nvic_enable_irq(NVIC_DMA1_CHANNEL2_3_DMA2_CHANNEL1_2_IRQ);
 }
 
-void tim_setup(void)
+static void tim_setup(void)
 {
     //
     rcc_periph_clock_enable(RCC_TIM14);
@@ -234,13 +252,13 @@ void tim_setup(void)
     timer_enable_counter(TIM14);                     //migrated to nvic_setup
 }
 
-void tim_stop(void)
-{
-    timer_disable_counter(TIM(TIM14)); // disable timer
-    timer_set_counter(TIM(TIM14), 0); // reset timer counter
-    timer_clear_flag(TIM(TIM14), TIM_SR_UIF); // clear timer flag
-    nvic_clear_pending_irq(NVIC_TIM_IRQ(TIM14)); // clear IRQ flag
-}
+// void tim_stop(void)
+// {
+//     timer_disable_counter(TIM(TIM14)); // disable timer
+//     timer_set_counter(TIM(TIM14), 0); // reset timer counter
+//     timer_clear_flag(TIM(TIM14), TIM_SR_UIF); // clear timer flag
+//     nvic_clear_pending_irq(NVIC_TIM_IRQ(TIM14)); // clear IRQ flag
+// }
 
 void tim14_isr(void)
 {
@@ -292,13 +310,25 @@ void tim14_isr(void)
   */
 void usart1_isr(void)
 {
+    //PAGE 744
+
+    //ERROR HANDLING
+    if ( (USART1_ISR & 0x07) != 0 ) {
+        BKPT;
+    }
+
     /* Check if we were called because of RXNE. */
-    if (((USART_CR1(USART1) & USART_CR1_RXNEIE) != 0) && ((USART_ISR(USART1) & USART_ISR_RXNE) != 0) && (((USART_ISR(USART1) & 0x07) == 0)) ) {
+    if (   (  (USART1_CR1 & USART_CR1_RXNEIE) != 0 )
+         && ( (USART1_ISR & USART_ISR_RXNE) != 0 )
+         && ( (USART1_ISR & 0x07) == 0) ) {
+
+        // BKPT;
+
         aRxBuffer[0] = usart_recv(USART1);
 
         /* Enable transmit interrupt so it sends back the data. */
         USART_CR1(USART1) |= USART_CR1_TXEIE;
-        // gpio_toggle(GPIOB, GPIO0);       //debug only
+        gpio_toggle(GPIOB, GPIO0);       //debug only
 
         //adc channel 0
         if ( (aRxBuffer[0] == ( 1 << 7 )) | (ledCHA == 0) ) {
@@ -360,15 +390,16 @@ void usart1_isr(void)
         float2led(testf);
         // dot(cnt++%8, 1);      //movement of dots
         // aTxBuffer[7]=cnt++;      //movement of the leds above
-        transmitBuffer();
+        // transmitBuffer();
+        dma_write(aTxBuffer, 9);
         // BKPT;
+        // nvic_clear_pending_irq(NVIC_USART1_IRQ);
+        USART1_ISR &= ~USART_ISR_ORE;
+        USART1_ISR &= ~USART_ISR_RXNE;
+        // BKPT;
+        return;
     }
-    nvic_clear_pending_irq(NVIC_USART1_IRQ);
-    // fixme later
-    // if (((USART_CR1(USART1) & USART_CR1_TXEIE) != 0) && ((USART_ISR(USART1) & USART_ISR_TXE) != 0)) {
-    //      /* Disable the TXE interrupt as we don't need it anymore. */
-    //      USART_CR1(USART1) &= ~USART_CR1_TXEIE;
-    // }
+    // BKPT;
 }
 
 /**
@@ -430,8 +461,8 @@ static FILE *usart_setup(uint32_t dev)
     nvic_enable_irq(NVIC_USART1_IRQ);        //migrated to nvid_setup
 
     // //TX DMA only... int multiplexor
-    // nvic_set_priority(NVIC_DMA1_CHANNEL1_IRQ, 0);
-    // nvic_enable_irq(NVIC_DMA1_CHANNEL1_IRQ);
+    nvic_set_priority(NVIC_DMA1_CHANNEL2_3_DMA2_CHANNEL1_2_IRQ, 0);
+    nvic_enable_irq(NVIC_DMA1_CHANNEL2_3_DMA2_CHANNEL1_2_IRQ);
 
     /*
      *
@@ -442,6 +473,41 @@ static FILE *usart_setup(uint32_t dev)
     setvbuf(fp, NULL, _IONBF, 0);
 
     return fp;
+}
+
+
+static void dma_write(char *data, int size)
+{
+    // BKPT;
+    dma_channel_reset(DMA1, DMA_CHANNEL2);
+    dma_set_peripheral_address(DMA1, DMA_CHANNEL2, (uint32_t)&USART1_TDR);        //fixme. TDR ot DR
+    dma_set_memory_address(DMA1, DMA_CHANNEL2, (uint32_t)data);
+    dma_set_number_of_data(DMA1, DMA_CHANNEL2, size);
+    dma_set_read_from_memory(DMA1, DMA_CHANNEL2);
+    dma_enable_memory_increment_mode(DMA1, DMA_CHANNEL2);
+    dma_set_peripheral_size(DMA1, DMA_CHANNEL2, DMA_CCR_PSIZE_8BIT);
+    dma_set_memory_size(DMA1, DMA_CHANNEL2, DMA_CCR_MSIZE_8BIT);
+    dma_set_priority(DMA1, DMA_CHANNEL2, DMA_CCR_PL_VERY_HIGH);
+    dma_enable_transfer_complete_interrupt(DMA1, DMA_CHANNEL2);
+    dma_enable_channel(DMA1, DMA_CHANNEL2);
+    usart_enable_tx_dma(USART1);
+    // BKPT;
+}
+
+void dma1_channel2_3_dma2_channel1_2_isr(void)
+{
+    BKPT;
+    if ((DMA1_ISR &DMA_ISR_TCIF1) != 0) {
+        DMA1_IFCR |= DMA_IFCR_CTCIF1;
+
+        // transfered = 1;
+    }
+
+    dma_disable_transfer_complete_interrupt(DMA1, DMA_CHANNEL1);
+
+    usart_disable_tx_dma(USART1);
+
+    dma_disable_channel(DMA1, DMA_CHANNEL1);
 }
 
 // /*
@@ -559,17 +625,18 @@ static void read_adc_naiive(uint8_t channel)
   */
 static void transmitBuffer(void)
 {
-    for (uint8_t i=0; i<10; i++) {
-        // usart_send_blocking(USART1, aTxBuffer[i]);
-        fprintf(fp, "%c", aTxBuffer[i]);
-    }
+    // for (uint8_t i=0; i<10; i++) {
+    //     // usart_send_blocking(USART1, aTxBuffer[i]);
+    //     fprintf(fp, "%c", aTxBuffer[i]);
+    // }
+    usart_enable_tx_dma(USART1);
 }
 
 /**
   * @brief
   * @retval
   */
-int main(void)
+void main(void)
 {
     clock_setup();
     gpio_setup();
@@ -581,7 +648,7 @@ int main(void)
     // iwdg_set_period_ms(25);
     // iwdg_start();
 
-    tim_setup();
+    // tim_setup();
 
     fp = usart_setup(USART1);       //
 
@@ -604,77 +671,77 @@ int main(void)
         //     __asm__("nop");
         // }
 	}
-	return 0;
+    // go to somewhere - reset handler ?
 }
 
-/**
-  * @brief
-  * @retval
-  */
-void _close(void)
-{
-    BKPT;
-}
+// /**
+//   * @brief
+//   * @retval
+//   */
+// void _close(void)
+// {
+//     BKPT;
+// }
 
-/**
-  * @brief
-  * @retval
-  */
-void _lseek(void)
-{
-    BKPT;
-}
+// /**
+//   * @brief
+//   * @retval
+//   */
+// void _lseek(void)
+// {
+//     BKPT;
+// }
 
-/**
-  * @brief
-  * @retval
-  */
-void _read(void)
-{
-    BKPT;
-}
+// /**
+//   * @brief
+//   * @retval
+//   */
+// void _read(void)
+// {
+//     BKPT;
+// }
 
-/**
-  * @brief
-  * @retval
-  */
-void _write(void)
-{
-    BKPT;
-}
+// /**
+//   * @brief
+//   * @retval
+//   */
+// void _write(void)
+// {
+//     BKPT;
+// }
 
-/**
-  * @brief
-  * @retval
-  */
-void _fstat_r(void)
-{
-    BKPT;
-}
+// /**
+//   * @brief
+//   * @retval
+//   */
+// void _fstat_r(void)
+// {
+//     BKPT;
+// }
 
-/**
-  * @brief
-  * @retval
-  */
-void _exit(int)
-{
-    BKPT;
-    while(1);
-}
+// /**
+//   * @brief
+//   * @retval
+//   */
+// void _exit(int)
+// {
+//     BKPT;
+//     while(1);
+// }
 
-/**
-  * @brief
-  * @retval
-  */
-void _isatty_r(void)
-{
-    BKPT;
-}
+// /**
+//   * @brief
+//   * @retval
+//   */
+// void _isatty_r(void)
+// {
+//     BKPT;
+// }
 
-int _getpid(void)
-{
-  return 1;
-}
+// int _getpid(void)
+// {
+//   return 1;
+// }
 
 int _kill(int pid, int sig)
 {

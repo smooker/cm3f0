@@ -1,12 +1,23 @@
-set mi-async on
+#set mi-async on
 set mem inaccessible-by-default off
 #target extended-remote 10.15.0.3:3333
-target extended-remote localhost:4242
+#target extended-remote localhost:4242
 
 file ../main.elf 
 load ../main.hex
 #compare-sections
-c
+
+define lf
+file ../main.elf
+load ../main.hex
+end
+
+define pu
+x/tw USART1_CR1
+x/tw USART1_ISR
+end
+
+#c
 #hbreak main
 #watch arrf[0]
 
@@ -15,6 +26,13 @@ c
 #del 3
 #p/x *(uint32_t *)0x20000570
 #x/8xb 0x20000570
+
+#>>> p/t USART1_ISR
+#$2 = 11000100000000011111000
+
+#>>> x/tw USART1_ISR
+#0x6200f8:	00000000011000100000000011111000
+
 
 #hbreak Core/Src/main.c:258
 #next

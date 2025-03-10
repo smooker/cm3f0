@@ -21,4 +21,8 @@ BINARY = main
 
 LDSCRIPT = ./stm32f031k6t6.ld
 
+# To disable, run "make ENABLE_SEMIHOSTING=0" or comment next line out
+ENABLE_SEMIHOSTING ?= 1
+
+
 include ./Makefile.include

@@ -104,7 +104,8 @@ TGT_CFLAGS	+= $(ARCH_FLAGS)
 TGT_CFLAGS	+= -Wextra -Wshadow -Wimplicit-function-declaration
 TGT_CFLAGS	+= -Wredundant-decls -Wmissing-prototypes -Wstrict-prototypes
 TGT_CFLAGS	+= -fno-common -ffunction-sections -fdata-sections
-TGT_CFLAGS	+= -fno-rtti -fno-exceptions
+TGT_CFLAGS      += -Wno-main
+#TGT_CFLAGS	+= -fno-rtti -fno-exceptions
 
 ###############################################################################
 # C++ flags
@@ -124,7 +125,7 @@ TGT_CPPFLAGS	+= $(DEFS)
 ###############################################################################
 # Linker flags
 
-TGT_LDFLAGS		+= --static -nostartfiles
+TGT_LDFLAGS		+= --static
 TGT_LDFLAGS		+= -T$(LDSCRIPT)
 TGT_LDFLAGS		+= $(ARCH_FLAGS) $(DEBUG)
 TGT_LDFLAGS		+= -Wl,-Map=$(*).map -Wl,--cref
@@ -132,6 +133,17 @@ TGT_LDFLAGS		+= -Wl,--gc-sections
 ifeq ($(V),99)
 TGT_LDFLAGS		+= -Wl,--print-gc-sections
 endif
+
+ifeq ($(ENABLE_SEMIHOSTING),1)
+TGT_LDFLAGS	+= --specs=rdimon.specs
+LDLIBS		+= -lrdimon
+DEFS		+= -DENABLE_SEMIHOSTING=1
+endif
+
+ifeq ($(ENABLE_SEMIHOSTING),0)
+TGT_LDFLAGS		+= -nostartfiles 
+endif
+
 
 ###############################################################################
 # Used libraries
